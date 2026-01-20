@@ -44,19 +44,30 @@
   </div>
 
   <!-- RIGHT: Editor + Output -->
-  <div class="panel">
-    <div class="hd">
-      <div class="title">Editor & Output</div>
-      <div class="btnrow">
-        <button class="ok" id="btnGenerate">Generate LaTeX</button>
-        <button id="btnCopy">Copy LaTeX</button>
-        <button id="btnSaveKey">Save Key Snapshot</button>
-        <button id="btnShowShuffleMap">Show Shuffle Map</button>
-      </div>
+  <!-- RIGHT: Editor + Output -->
+<div class="panel">
+  <div class="hd">
+    <div class="title">Editor & Output</div>
+
+    <div class="btnrow">
+      <label class="small muted" style="display:flex; align-items:center; gap:8px; margin-right:10px;">
+        Format:
+        <select id="docMode" style="width:auto; min-width:140px;">
+          <option value="test" selected>Test</option>
+          <option value="quiz">Quiz</option>
+        </select>
+      </label>
+
+      <button class="ok" id="btnGenerate">Generate LaTeX</button>
+      <button id="btnCopy">Copy LaTeX</button>
+      <button id="btnSaveKey">Save Key Snapshot</button>
+      <button id="btnShowShuffleMap">Show Shuffle Map</button>
     </div>
-    <div class="bd">
-      <div class="grid2">
-        <!-- Test settings -->
+  </div>
+
+  <div class="bd">
+    <div class="grid2">
+      <!-- Test settings -->
         <div>
           <div class="field">
             <label>Test name (Title page)</label>
@@ -1149,16 +1160,17 @@ function insertTableLatex() {
       choiceLines,
       `\\end{choices}`
     ].join("\n");
-  } else if (q.type === "numeric") {
-    // Your current numeric behavior (adjust to your final choice)
-    // Example: key-only answer:
+    } else if (q.type === "numeric") {
     const ans = (q.numericAnswer || "").trim();
     inner = [
       imgLines,
       `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+      `\\numbox`,
+      // Teacher-only answer (only appears if they compile with \printanswers)
       ans ? `\\ifprintanswers\n\\textbf{Answer:} ${escapeLatexUnsafe(ans)}\n\\fi` : ``
-    ].join("\n");
-  } else {
+    ].filter(Boolean).join("\n");
+    }
+ else {
     inner = [
       imgLines,
       `\\question${pts}${escapeLatexUnsafe(q.prompt)}`
@@ -1176,18 +1188,71 @@ function insertTableLatex() {
 
 
   function generateLatex() {
-    const testName = el("testName").value || "TEST NAME GOES HERE";
-    const gradeSubject = el("gradeSubject").value || "Grade and Subject goes here";
-    const headerImage = el("headerImage").value || "Stem Header.png";
-    const instructionsLines = el("instructions").value.split("\n").map(s => s.trim()).filter(Boolean);
+  const mode = (el("docMode")?.value || "test"); // "test" or "quiz"
 
-    const instructionItems = instructionsLines.length
-      ? instructionsLines.map(x => `       \\item ${escapeLatexUnsafe(x)}`).join("\n")
-      : `       \\item Put your test rules in here eg.\n       \\item No Calculators`;
+  const testName = el("testName")?.value || "TITLE GOES HERE";
+  const gradeSubject = el("gradeSubject")?.value || "Grade and Subject goes here";
+  const headerImage = el("headerImage")?.value || "Stem Header.png";
 
-    const questionsLatex = state.questions.map(q => latexQuestionBlock(q)).join("\n");
+  const instructionsLines = (el("instructions")?.value || "")
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
 
-    const out =
+  const instructionItems = instructionsLines.length
+    ? instructionsLines.map(x => `       \\item ${escapeLatexUnsafe(x)}`).join("\n")
+    : `       \\item Put your test rules in here eg.\n       \\item No Calculators`;
+
+  // Build question blocks from your current question list
+  const questionsLatex = state.questions.map(q => latexQuestionBlock(q)).join("\n");
+
+  let out = "";
+
+  if (mode === "quiz") {
+    // QUIZ FORMAT (compact header)
+    out =
+`\\documentclass[10pt]{exam}
+\\usepackage{tikz}
+\\usepackage{amsmath, amssymb}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{tikz-3dplot} % For 3D projections
+\\tdplotsetmaincoords{70}{110}
+\\usepackage{multicol}
+\\usepackage{graphicx}
+\\graphicspath{ {./images/} }
+\\usepackage{tcolorbox}
+\\pointsinmargin
+
+\\def\\numbox{
+\\begin{center}
+\\begin{tikzpicture}
+\\draw (0,0) rectangle (1,1);
+\\draw (0,0) rectangle (2,1);
+\\draw (0,0) rectangle (3,1);
+\\draw (0,0) rectangle (4,1);
+\\end{tikzpicture}
+\\end{center}
+}
+
+\\begin{document}
+
+\\begin{center}
+  \\textbf{\\Large ${escapeLatexUnsafe(testName)}}
+\\end{center}
+\\vspace{0.5cm}
+Name: \\underline{\\hspace{6cm}} \\hspace{5cm} Date: \\underline{\\hspace{4cm}}
+\\vspace{1cm}
+
+% Questions go in here. use the format \\question[# of points] Question text here
+\\begin{questions}
+${questionsLatex}
+\\end{questions}
+
+\\end{document}
+`;
+  } else {
+    // TEST FORMAT (your current full title page)
+    out =
 `\\documentclass[10pt, addpoints]{exam}
 \\addpoints
 \\usepackage{amsmath}
@@ -1195,12 +1260,12 @@ function insertTableLatex() {
 \\usepackage{pgfplots}
 \\usepackage{multicol}
 \\usepackage{tcolorbox}
+\\usepackage{graphicx}
 \\graphicspath{ {./images/} }
 \\pointsinmargin
 
 \\usepackage{needspace}
 \\usepackage{etoolbox}
-
 
 \\def\\numbox{
 \\begin{center}
@@ -1250,6 +1315,7 @@ ${instructionItems}
 \\end{center}
 
 \\newpage
+\\begin{center} \\textbf{ Multiple Choice} \\end{center}
 
 \\begin{questions}
 
@@ -1259,9 +1325,12 @@ ${questionsLatex}
 
 \\end{document}
 `;
-    el("latexOut").value = out;
-    renderMapping();
   }
+
+  el("latexOut").value = out;
+  renderMapping();
+}
+
 
   function renderMapping() {
     const container = el("mappingOut");
