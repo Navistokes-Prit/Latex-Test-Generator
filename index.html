@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Exam LaTeX Test Builder (Client-Side)</title>
+
+  <link rel="stylesheet" href="style_pro.css">
+
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+ 
+</head>
+<body>
+<header>
+  <h1>Exam (LaTeX) Test Builder</h1>
+  <p>Client-side tool: build questions, reorder/shuffle, and copy/paste LaTeX into Overleaf.</p>
+</header>
+
+<div class="app">
+  <!-- LEFT: Question list -->
+  <div class="panel">
+    <div class="hd">
+      <div class="title">Questions</div>
+      <div class="muted" id="qCount">0</div>
+    </div>
+    <div class="bd">
+      <div class="btnrow" style="margin-bottom:10px;">
+        <button class="btn-add" id="btnAddMC">Add MC</button>
+        <button class="btn-add" id="btnAddNum">Add Numeric</button>
+        <button class="btn-add" id="btnAddWritten">Add Written</button>
+        <button class="btn-shuffle" id="btnShuffleSelected">Shuffle Selected</button>
+        <button class="btn-shuffle" id="btnShuffleAll">Shuffle All</button>
+        <button class="btn-group" id="btnGroupSelected">Group Selected</button>
+        <button class="btn-group" id="btnUngroupSelected">Ungroup Selected</button>
+        <button id="btnClearSaved">Clear Saved</button>
+      </div>
+      <div class="small">Drag the handle on a question card to reorder.</div>
+      <div class="hr"></div>
+      <div class="qlist" id="qList"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Editor + Output -->
+  <div class="panel">
+    <div class="hd">
+      <div class="title">Editor & Output</div>
+      <div class="btnrow">
+        <button class="ok" id="btnGenerate">Generate LaTeX</button>
+        <button id="btnCopy">Copy LaTeX</button>
+      </div>
+    </div>
+    <div class="bd">
+      <div class="grid2">
+        <!-- Test settings -->
+        <div>
+          <div class="field">
+            <label>Test name (Title page)</label>
+            <input type="text" id="testName" placeholder="e.g., Unit 3 Test" />
+          </div>
+          <div class="field">
+            <label>Grade and Subject</label>
+            <input type="text" id="gradeSubject" placeholder="e.g., Grade 10 Science" />
+          </div>
+          <div class="field">
+            <label>Header image filename (in Overleaf images/ folder)</label>
+            <input type="text" id="headerImage" value="Image_name_here.png" />
+            <div class="small">Overleaf: put the image inside <code>images/</code>. Your LaTeX already has <code>\graphicspath{ {./images/} }</code>.</div>
+          </div>
+          <div class="field">
+            <label>Instructions (one per line)</label>
+            <textarea id="instructions" placeholder="No calculators&#10;Show all work"></textarea>
+          </div>
+          <div class="hr"></div>
+
+          <!-- Question editor -->
+          <div class="field">
+            <label>Selected Question</label>
+            <div class="small" id="selectedInfo">No question selected. Click a question card on the left.</div>
+          </div>
+
+          <div id="editorArea" style="display:none;">
+            <div class="grid2">
+              <div class="field">
+                <label>Type</label>
+                <select id="qType">
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="numeric">Numeric Response</option>
+                  <option value="written">Written Response</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Points (optional)</label>
+                <input type="number" id="qPoints" min="0" step="1" placeholder="e.g., 3" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Question prompt (LaTeX allowed)</label>
+              <textarea id="qPrompt" placeholder="Type the question here..."></textarea>
+            </div>
+
+            <div class="field">
+              <label>Image filename(s) (optional, one per line; must exist in images/ folder)</label>
+              <textarea id="qImages" placeholder="diagram1.png&#10;photo2.jpg"></textarea>
+              <div class="small">Each will be inserted as <code>\includegraphics{...}</code> above the question text.</div>
+            </div>
+            
+            <!-- Numeric-only fields -->
+            <div id="numericArea" style="display:none;">
+              <div class="grid2">
+                <div class="field">
+                  <label>Numeric answer (shown only when you compile with \printanswers)</label>
+                  <input type="text" id="numAnswer" placeholder="e.g., 9.8 m/s^2" />
+                </div>
+              </div>
+            </div>
+
+
+
+            <div id="mcArea">
+              <div class="field">
+                <label>Multiple choice options (4) and correct answer</label>
+                <div class="choices" id="mcChoices"></div>
+                <div class="btnrow" style="margin-top:8px;">
+                  <button type="button" id="btnOpenTableBuilder">Table Builder</button>
+                </div>
+                <div class="small">Use this to create a matrix-style choice table (A–D vs columns) and insert it into the prompt or a choice.</div>
+
+
+              </div>
+            </div>
+
+            <div class="btnrow">
+              <button class="primary" id="btnSave">Apply Changes</button>
+              <button class="danger" id="btnDelete">Delete Question</button>
+              <button id="btnDuplicate">Duplicate</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output -->
+        <div class="outwrap">
+          <div class="field">
+            <label>Generated LaTeX (.tex)</label>
+            <textarea id="latexOut" spellcheck="false" placeholder="Click “Generate LaTeX” to populate..."></textarea>
+          </div>
+
+          <div class="field">
+            <label>Mapping / Answer Key (for your reference)</label>
+            <div id="mappingOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
+              <div class="small muted">Generate LaTeX to refresh mappings.</div>
+            </div>
+            <div class="small">This mapping is not inserted into the student test; it is for teachers to verify shuffles/reorders.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table Builder Modal -->
+<div id="tableModal" class="tb-modal">
+  <div class="tb-modal-card">
+    <div class="tb-modal-hd">
+      <div style="font-weight:600;">Table Builder</div>
+      <button type="button" id="btnCloseTableModal">Close</button>
+    </div>
+
+    <div class="tb-modal-bd">
+      <div class="btnrow" style="margin-bottom:10px;">
+        <button type="button" id="btnAddTableCol">Add Column</button>
+        <button type="button" id="btnAddTableRow">Add Row</button>
+        <button type="button" id="btnRemoveTableCol">Remove Column</button>
+        <button type="button" id="btnRemoveTableRow">Remove Row</button>
+
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label class="small muted">Insert into:</label>
+          <select id="tableInsertTarget">
+            <option value="prompt">Question Prompt</option>
+            <option value="choice0">Choice A</option>
+            <option value="choice1">Choice B</option>
+            <option value="choice2">Choice C</option>
+            <option value="choice3">Choice D</option>
+          </select>
+          <button type="button" class="primary" id="btnInsertTableLatex">Insert LaTeX</button>
+        </div>
+      </div>
+
+      <div class="small muted" style="margin-bottom:10px;">
+        Click into any cell to type. Add/remove by using Add Row/Column. (Row labels remain A., B., C., … automatically.)
+      </div>
+
+      <div id="tableBuilderHost" class="tb-host"></div>
+
+      <div class="small muted" style="margin-top:10px;">
+        Tip: If you insert into the prompt, set the four choices to just “A”, “B”, “C”, “D” (or leave blank text).
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(() => {
+  const state = {
+    questions: [],
+    selectedId: null
+  };
+
+  const el = (id) => document.getElementById(id);
+
+  function uid(prefix="q") {
+    return prefix + "_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+  }
+
+  function escapeLatexUnsafe(str) {
+    return str ?? "";
+  }
+
+  function clamp4Choices(q) {
+    if (!q.choices || q.choices.length !== 4) {
+      q.choices = [
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" }
+      ];
+    }
+    if (!q.correctChoiceId) q.correctChoiceId = q.choices[0].id;
+  }
+
+  function renderQuestionCard(q, idx, parent) {
+    const card = document.createElement("div");
+    card.className = "qcard" + (q.id === state.selectedId ? " active" : "");
+    card.dataset.id = q.id;
+
+    const handle = document.createElement("div");
+    handle.className = "handle";
+    handle.textContent = "≡";
+
+    const meta = document.createElement("div");
+    meta.className = "qmeta";
+
+    const top = document.createElement("div");
+    top.className = "topline";
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = q.type.replace("_"," ").toUpperCase();
+
+    const idxSpan = document.createElement("span");
+    idxSpan.className = "badge";
+    idxSpan.textContent = "Q" + (idx + 1);
+
+    top.appendChild(badge);
+    top.appendChild(idxSpan);
+
+    const prev = document.createElement("div");
+    prev.className = "qpreview";
+    const previewText = (q.prompt || "").replace(/\s+/g," ").trim();
+    prev.textContent = previewText
+      ? previewText.slice(0,70) + (previewText.length > 70 ? "…" : "")
+      : "(no prompt yet)";
+
+    const actions = document.createElement("div");
+    actions.className = "qactions";
+
+    const lbl = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!q.selected;
+    cb.addEventListener("change", e => q.selected = e.target.checked);
+
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode("Selected"));
+    actions.appendChild(lbl);
+
+    meta.appendChild(top);
+    meta.appendChild(prev);
+    meta.appendChild(actions);
+
+    card.appendChild(handle);
+    card.appendChild(meta);
+
+    card.addEventListener("click", e => {
+      if (e.target.tagName === "INPUT") return;
+      state.selectedId = q.id;
+      renderList();
+      loadEditor(q.id);
+    });
+
+    parent.appendChild(card);
+  }
+
+
+
+
+
+  function renderList() {
+    const list = el("qList");
+    list.innerHTML = "";
+
+    let i = 0;
+
+    while (i < state.questions.length) {
+      const q = state.questions[i];
+
+      // If NOT grouped → render normally
+      if (!q.groupId) {
+        renderQuestionCard(q, i, list);
+        i++;
+        continue;
+      }
+
+      // If grouped → collect contiguous group
+      const gid = q.groupId;
+      const groupDiv = document.createElement("div");
+      groupDiv.className = "qgroup";
+
+      let j = i;
+      while (j < state.questions.length && state.questions[j].groupId === gid) {
+        renderQuestionCard(state.questions[j], j, groupDiv);
+        j++;
+      }
+
+      list.appendChild(groupDiv);
+      i = j;
+    }
+
+    el("qCount").textContent = state.questions.length.toString();
+  }
+
+  function loadEditor(qid) {
+    const q = state.questions.find(x => x.id === qid);
+    if (!q) {
+      el("selectedInfo").textContent = "No question selected.";
+      el("editorArea").style.display = "none";
+      return;
+    }
+    el("selectedInfo").textContent = `Editing ${qid} (rendered position: Q${state.questions.indexOf(q) + 1})`;
+    el("editorArea").style.display = "block";
+
+    el("qType").value = q.type;
+    el("qPoints").value = (q.points ?? "") === null ? "" : (q.points ?? "");
+    el("qPrompt").value = q.prompt ?? "";
+    el("qImages").value = (q.images ?? []).join("\n");
+
+    if (q.type === "multiple_choice") {
+      el("mcArea").style.display = "block";
+      clamp4Choices(q);
+      renderMCChoices(q);
+    } else {
+      el("mcArea").style.display = "none";
+    }
+
+    // Numeric-only editor area
+    if (q.type === "numeric") {
+      el("numericArea").style.display = "block";
+      el("numAnswer").value = q.numericAnswer || "";
+    } else {
+      el("numericArea").style.display = "none";
+    }
+
+
+  }
+
+  function renderMCChoices(q) {
+    const box = el("mcChoices");
+    box.innerHTML = "";
+    const letters = ["A", "B", "C", "D"];
+
+    q.choices.forEach((ch, i) => {
+      const row = document.createElement("div");
+      row.className = "choiceRow";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "correctChoice";
+      radio.checked = (q.correctChoiceId === ch.id);
+      radio.addEventListener("change", () => { q.correctChoiceId = ch.id; });
+
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = `${letters[i]} choice text`;
+      inp.value = ch.text ?? "";
+      inp.addEventListener("input", (e) => { ch.text = e.target.value; });
+
+      row.appendChild(radio);
+      row.appendChild(inp);
+      box.appendChild(row);
+    });
+  }
+
+  function createQuestion(type) {
+    const base = {
+      id: uid("q"),
+      type,
+      points: "",
+      prompt: "",
+      images: [],
+      shuffleSelected: true,
+      choices: null,
+      correctChoiceId: null,
+      numericAnswer: "",
+    };
+
+    if (type === "multiple_choice") {
+      base.choices = [
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" },
+        { id: uid("c"), text: "" }
+      ];
+      base.correctChoiceId = base.choices[0].id;
+    }
+
+    state.questions.push(base);
+    state.selectedId = base.id;
+    renderList();
+    loadEditor(base.id);
+  }
+
+  function saveEdits() {
+    const q = state.questions.find(x => x.id === state.selectedId);
+    if (!q) return;
+
+    q.type = el("qType").value;
+    q.points = el("qPoints").value === "" ? "" : Number(el("qPoints").value);
+    q.prompt = el("qPrompt").value;
+
+    const imgs = el("qImages").value.split("\n").map(s => s.trim()).filter(Boolean);
+    q.images = imgs;
+
+    if (q.type === "numeric") {
+      q.numericAnswer = el("numAnswer").value || "";
+    }
+
+    if (q.type === "multiple_choice") {
+      clamp4Choices(q);
+    } else {
+      // if switching away from MC, keep choices in object (harmless) or clear them.
+      // Keeping is fine; it preserves data if someone flips types accidentally.
+    }
+
+    renderList();
+    loadEditor(q.id);
+    saveToCache();
+
+  }
+
+  function deleteSelected() {
+    const idx = state.questions.findIndex(x => x.id === state.selectedId);
+    if (idx < 0) return;
+    state.questions.splice(idx, 1);
+    state.selectedId = state.questions[idx]?.id || state.questions[idx - 1]?.id || null;
+    renderList();
+    loadEditor(state.selectedId);
+  }
+
+  function duplicateSelected() {
+    const q = state.questions.find(x => x.id === state.selectedId);
+    if (!q) return;
+
+    const copy = JSON.parse(JSON.stringify(q));
+    copy.id = uid("q");
+    copy.shuffleSelected = true;
+
+    if (copy.type === "multiple_choice") {
+      const oldToNew = new Map();
+      copy.choices.forEach(ch => {
+        const oldId = ch.id;
+        ch.id = uid("c");
+        oldToNew.set(oldId, ch.id);
+      });
+      copy.correctChoiceId = oldToNew.get(copy.correctChoiceId) || copy.choices[0].id;
+    }
+
+    const idx = state.questions.findIndex(x => x.id === state.selectedId);
+    state.questions.splice(idx + 1, 0, copy);
+    state.selectedId = copy.id;
+    renderList();
+    loadEditor(copy.id);
+  }
+
+  function shuffleSelected() {
+  const units = getGroupUnits(state.questions);
+
+  // A unit is selected if ANY item in it is selected.
+  // (You can change to "every item selected" if you prefer stricter behavior.)
+  const selectedUnitIndexes = [];
+  const selectedUnits = [];
+
+  units.forEach((u, idx) => {
+    const isSelectedUnit = u.items.some(q => q.selected);
+    if (isSelectedUnit) {
+      selectedUnitIndexes.push(idx);
+      selectedUnits.push(u);
+    }
+  });
+
+  if (selectedUnits.length < 2) return;
+
+  shuffleArrayInPlace(selectedUnits);
+
+  // Put shuffled units back into their original unit positions
+  selectedUnitIndexes.forEach((unitPos, k) => {
+    units[unitPos] = selectedUnits[k];
+  });
+
+  state.questions = units.flatMap(u => u.items);
+
+  // Optional: clear selection after shuffle
+  state.questions.forEach(q => { q.selected = false; });
+
+  renderList();
+  loadEditor(state.selectedId);
+}
+
+
+  function shuffleAll() {
+  const units = getGroupUnits(state.questions);
+
+  shuffleArrayInPlace(units);
+
+  // Flatten back to questions
+  state.questions = units.flatMap(u => u.items);
+
+  renderList();
+  loadEditor(state.selectedId);
+}
+
+
+function getGroupUnits(list) {
+  // Returns units: each unit is { ids: [...], items: [...] }
+  // A unit is either one ungrouped question, or a contiguous group (same groupId).
+  const units = [];
+  let i = 0;
+
+  while (i < list.length) {
+    const q = list[i];
+    if (!q.groupId) {
+      units.push({ ids: [q.id], items: [q] });
+      i++;
+      continue;
+    }
+
+    // collect contiguous items with same groupId
+    const gid = q.groupId;
+    const items = [];
+    const ids = [];
+    let j = i;
+    while (j < list.length && list[j].groupId === gid) {
+      items.push(list[j]);
+      ids.push(list[j].id);
+      j++;
+    }
+    units.push({ ids, items });
+    i = j;
+  }
+
+  return units;
+}
+
+function groupSelected() {
+  const selected = state.questions.filter(q => q.selected);
+  if (selected.length < 2) return;
+
+  // Keep relative order as currently shown
+  const selectedIds = new Set(selected.map(q => q.id));
+
+  // Find earliest index among selected questions
+  const firstIndex = state.questions.findIndex(q => selectedIds.has(q.id));
+
+  // Remove selected from list
+  const remaining = state.questions.filter(q => !selectedIds.has(q.id));
+
+  // Insert them back contiguously at firstIndex
+  remaining.splice(firstIndex, 0, ...selected);
+
+  // Assign groupId (same for all in selection)
+  const gid = uid("g");
+  selected.forEach(q => { q.groupId = gid; });
+
+  // Replace list
+  state.questions = remaining;
+
+  // Optional: uncheck after grouping (recommended)
+  selected.forEach(q => { q.selected = false; });
+
+  renderList();
+  loadEditor(state.selectedId);
+}
+
+function ungroupSelected() {
+  // Find any selected question that has a groupId
+  const picked = state.questions.find(q => q.selected && q.groupId);
+  if (!picked) return;
+
+  const gid = picked.groupId;
+
+  // Remove groupId from all questions in that group
+  state.questions.forEach(q => {
+    if (q.groupId === gid) q.groupId = null;
+  });
+
+  // Optional: clear selection
+  state.questions.forEach(q => { q.selected = false; });
+
+  renderList();
+  loadEditor(state.selectedId);
+}
+
+function removeTableColumn() {
+  // Keep at least 1 column
+  if (tableBuilder.cols.length <= 1) return;
+
+  tableBuilder.cols.pop();
+  tableBuilder.cells.forEach(row => row.pop());
+  renderTableBuilder();
+}
+
+function removeTableRow() {
+  // Keep at least 1 row
+  if (tableBuilder.rows.length <= 1) return;
+
+  tableBuilder.rows.pop();
+  tableBuilder.cells.pop();
+  renderTableBuilder();
+}
+
+
+function shuffleArrayInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function groupNumberMap() {
+  const map = new Map();
+  let n = 1;
+  state.questions.forEach(q => {
+    if (q.groupId && !map.has(q.groupId)) map.set(q.groupId, n++);
+  });
+  return map;
+}
+
+
+// ----------------------
+// LocalStorage persistence
+// ----------------------
+const STORAGE_KEY = "exam_builder_state_v1";
+
+function saveToCache() {
+  try {
+    const payload = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      state: {
+        questions: state.questions,
+        selectedId: state.selectedId
+      },
+      meta: {
+        testName: el("testName")?.value ?? "",
+        gradeSubject: el("gradeSubject")?.value ?? "",
+        headerImage: el("headerImage")?.value ?? "",
+        instructions: el("instructions")?.value ?? ""
+      }
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.error("Failed to save to cache:", e);
+  }
+}
+
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+
+    const payload = JSON.parse(raw);
+    if (!payload || !payload.state) return false;
+
+    // Restore state
+    state.questions = payload.state.questions || [];
+    state.selectedId = payload.state.selectedId || null;
+
+    // Restore form fields
+    if (payload.meta) {
+      if (el("testName")) el("testName").value = payload.meta.testName || "";
+      if (el("gradeSubject")) el("gradeSubject").value = payload.meta.gradeSubject || "";
+      if (el("headerImage")) el("headerImage").value = payload.meta.headerImage || "";
+      if (el("instructions")) el("instructions").value = payload.meta.instructions || "";
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Failed to load from cache:", e);
+    return false;
+  }
+}
+
+function clearCache() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+
+
+
+
+// ----------------------
+// Table Builder (MC matrix)
+// ----------------------
+const tableBuilder = {
+  cols: ["Column 1", "Column 2", "Column 3", "Column 4"],
+  rows: ["A.", "B.", "C.", "D."],
+  // cells[r][c] is the cell text for row r, column c
+  cells: [
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""],
+    ["", "", "", ""]
+  ]
+};
+
+function openTableModal() {
+  el("tableModal").style.display = "block";
+  renderTableBuilder();
+}
+
+function closeTableModal() {
+  el("tableModal").style.display = "none";
+}
+
+function ensureTableDimensions() {
+  // Ensure each row has correct column count
+  tableBuilder.cells.forEach((row, r) => {
+    while (row.length < tableBuilder.cols.length) row.push("");
+    if (row.length > tableBuilder.cols.length) row.length = tableBuilder.cols.length;
+  });
+}
+
+function addTableColumn() {
+  tableBuilder.cols.push(`Column ${tableBuilder.cols.length + 1}`);
+  tableBuilder.cells.forEach(row => row.push(""));
+  renderTableBuilder();
+}
+
+function addTableRow() {
+  const nextLetter = String.fromCharCode("A".charCodeAt(0) + tableBuilder.rows.length);
+  tableBuilder.rows.push(`${nextLetter}.`);
+  tableBuilder.cells.push(Array(tableBuilder.cols.length).fill(""));
+  renderTableBuilder();
+}
+
+function renderTableBuilder() {
+  ensureTableDimensions();
+
+  const host = el("tableBuilderHost");
+  const table = document.createElement("table");
+  table.className = "tb-grid";
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+
+  // Header row
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+
+  const corner = document.createElement("th");
+  corner.textContent = "";
+  corner.style.border = "1px solid #24324a";
+  corner.style.padding = "6px 8px";
+  hr.appendChild(corner);
+
+  tableBuilder.cols.forEach((h, c) => {
+    const th = document.createElement("th");
+    th.style.border = "1px solid #24324a";
+    th.style.padding = "6px 8px";
+
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = h;
+    inp.addEventListener("input", (e) => {
+      tableBuilder.cols[c] = e.target.value;
+    });
+    th.appendChild(inp);
+    hr.appendChild(th);
+  });
+
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  // Body rows
+  const tbody = document.createElement("tbody");
+  tableBuilder.rows.forEach((label, r) => {
+    const tr = document.createElement("tr");
+
+    const rowLabel = document.createElement("td");
+    rowLabel.style.border = "1px solid #24324a";
+    rowLabel.style.padding = "6px 8px";
+    rowLabel.style.whiteSpace = "nowrap";
+
+    const inpLabel = document.createElement("input");
+    inpLabel.type = "text";
+    inpLabel.value = label;
+    inpLabel.addEventListener("input", (e) => {
+      tableBuilder.rows[r] = e.target.value;
+    });
+
+    rowLabel.appendChild(inpLabel);
+    tr.appendChild(rowLabel);
+
+    tableBuilder.cols.forEach((_, c) => {
+      const td = document.createElement("td");
+      td.style.border = "1px solid #24324a";
+      td.style.padding = "6px 8px";
+
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.value = tableBuilder.cells[r][c] ?? "";
+      inp.addEventListener("input", (e) => {
+        tableBuilder.cells[r][c] = e.target.value;
+      });
+
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+
+  host.innerHTML = "";
+  host.appendChild(table);
+}
+
+function latexEscapeCell(s) {
+  // Minimal escaping so tabular doesn't break. Teachers can still type LaTeX if needed.
+  // Key: escape & which would split columns.
+  return (s ?? "").replaceAll("&", "\\&");
+}
+
+function buildLatexTable() {
+  ensureTableDimensions();
+
+  // Column spec: first column is left-aligned, others centered
+  const colSpec = "|l|" + tableBuilder.cols.map(() => "c|").join("");
+
+  const header = ` & ${tableBuilder.cols.map(latexEscapeCell).join(" & ")} \\\\ \\hline`;
+
+  const rows = tableBuilder.rows.map((lab, r) => {
+    const cells = tableBuilder.cells[r].map(latexEscapeCell).join(" & ");
+    return `${latexEscapeCell(lab)} & ${cells} \\\\ \\hline`;
+  }).join("\n");
+
+  return [
+    "\\begin{center}",
+    "\\renewcommand{\\arraystretch}{1.3}",
+    `\\begin{tabular}{${colSpec}}`,
+    "\\hline",
+    header,
+    rows,
+    "\\end{tabular}",
+    "\\end{center}"
+  ].join("\n");
+}
+
+function insertTableLatex() {
+  const target = el("tableInsertTarget").value;
+  const latex = buildLatexTable();
+
+  const q = state.questions.find(x => x.id === state.selectedId);
+  if (!q) return;
+
+  if (target === "prompt") {
+    // Insert at cursor in prompt if possible
+    const ta = el("qPrompt");
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    ta.value = ta.value.slice(0, start) + "\n" + latex + "\n" + ta.value.slice(end);
+    q.prompt = ta.value;
+    return;
+  }
+
+  // Insert into one of the MC choices
+  if (q.type !== "multiple_choice") return;
+  clamp4Choices(q);
+
+  const idx = Number(target.replace("choice", ""));
+  if (Number.isNaN(idx) || idx < 0 || idx > 3) return;
+
+  q.choices[idx].text = (q.choices[idx].text || "") + "\n" + latex;
+
+  // Refresh MC editor to show updated choice text
+  loadEditor(q.id);
+}
+
+  function latexQuestionBlock(q) {
+    const pts = (q.points !== "" && q.points !== null && q.points !== undefined) ? `[${q.points}] ` : " ";
+    const imgLines = (q.images || []).map(fn =>
+      `\\begin{center}\n\\includegraphics{${escapeLatexUnsafe(fn)}}\n\\end{center}\n`
+    ).join("");
+
+    if (q.type === "multiple_choice") {
+      clamp4Choices(q);
+      const choiceLines = q.choices.map(ch => {
+        const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
+        return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
+      }).join("\n");
+
+      return [
+        imgLines,
+        `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+        `\\begin{choices}`,
+        choiceLines,
+        `\\end{choices}`,
+        ``
+      ].join("\n");
+    }
+
+    if (q.type === "numeric") {
+      const ans = (q.numericAnswer || "").trim();
+
+      return [
+        imgLines,
+        `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+        ans ? `\\ifprintanswers\n ${escapeLatexUnsafe(ans)}\n\\fi` : ``,
+        ``
+      ].join("\n");
+    }
+
+
+
+
+
+    return [
+      imgLines,
+      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+      ``
+    ].join("\n");
+  }
+
+  function generateLatex() {
+    const testName = el("testName").value || "TEST NAME GOES HERE";
+    const gradeSubject = el("gradeSubject").value || "Grade and Subject goes here";
+    const headerImage = el("headerImage").value || "Stem Header.png";
+    const instructionsLines = el("instructions").value.split("\n").map(s => s.trim()).filter(Boolean);
+
+    const instructionItems = instructionsLines.length
+      ? instructionsLines.map(x => `       \\item ${escapeLatexUnsafe(x)}`).join("\n")
+      : `       \\item Put your test rules in here eg.\n       \\item No Calculators`;
+
+    const questionsLatex = state.questions.map(q => latexQuestionBlock(q)).join("\n");
+
+    const out =
+`\\documentclass[10pt, addpoints]{exam}
+\\addpoints
+\\usepackage{amsmath}
+\\usepackage{tikz}
+\\usepackage{pgfplots}
+\\usepackage{multicol}
+\\usepackage{tcolorbox}
+\\graphicspath{ {./images/} }
+\\pointsinmargin
+
+\\usepackage{needspace}
+\\usepackage{etoolbox}
+
+\\renewcommand{\\questionshook}{%
+  \\pretocmd{\\question}{\\Needspace{10\\baselineskip}}{}{}%
+}
+
+\\def\\numbox{
+\\begin{center}
+\\begin{tikzpicture}
+\\draw (0,0) rectangle (1,1);
+\\draw (0,0) rectangle (2,1);
+\\draw (0,0) rectangle (3,1);
+\\draw (0,0) rectangle (4,1);
+\\end{tikzpicture}
+\\end{center}
+}
+
+\\begin{document}
+
+% Title Page
+\\begin{center}
+
+    \\vspace{2cm}
+    \\includegraphics{${escapeLatexUnsafe(headerImage)}}
+
+\\vspace{1cm}
+    \\Huge\\textbf{${escapeLatexUnsafe(testName)}}
+
+    \\vspace{1cm}
+    \\large\\textbf{${escapeLatexUnsafe(gradeSubject)}}
+
+    \\vspace{2cm}
+    \\large
+    \\begin{tabbing}
+    Name: \\underline{\\hspace{8cm}} \\\\
+    Date: \\underline{\\hspace{8cm}}
+    \\end{tabbing}
+
+    \\vspace{1cm}
+    \\textbf{Instructions:}
+    \\vspace{0.5cm}
+
+    \\begin{itemize}
+${instructionItems}
+    \\end{itemize}
+
+\\vspace{1cm}
+ \\begin{center}
+    \\fbox{\\textbf{Total Points for this Exam: \\numpoints}}
+\\end{center}
+
+\\end{center}
+
+\\newpage
+\\begin{center} \\textbf{ Multiple Choice} \\end{center}
+
+\\begin{questions}
+
+% Questions go here.
+${questionsLatex}
+\\end{questions}
+
+\\end{document}
+`;
+    el("latexOut").value = out;
+    renderMapping();
+  }
+
+  function renderMapping() {
+    const container = el("mappingOut");
+    if (!state.questions.length) {
+      container.innerHTML = `<div class="small muted">No questions.</div>`;
+      return;
+    }
+
+    const rows = state.questions.map((q, i) => {
+      let ans = "";
+      if (q.type === "multiple_choice") {
+        clamp4Choices(q);
+        const idx = q.choices.findIndex(c => c.id === q.correctChoiceId);
+        const letter = ["A","B","C","D"][Math.max(0, idx)];
+        ans = letter;
+      } else if (q.type === "numeric") {
+        ans = (q.numericAnswer && q.numericAnswer.trim()) ? q.numericAnswer.trim() : "(no answer)";
+      } else {
+        ans = "(written)";
+      }
+      const promptPreview = (q.prompt || "").replace(/\s+/g, " ").trim().slice(0, 60);
+      return `<tr>
+        <td>Q${i+1}</td>
+        <td>${q.type.replace("_"," ")}</td>
+        <td>${promptPreview}${(q.prompt||"").length>60?"…":""}</td>
+        <td>${ans}</td>
+      </tr>`;
+    }).join("");
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Rendered #</th>
+            <th>Type</th>
+            <th>Prompt (preview)</th>
+            <th>Answer (MC)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  async function copyLatex() {
+    const txt = el("latexOut").value;
+    if (!txt) return;
+    await navigator.clipboard.writeText(txt);
+    el("btnCopy").textContent = "Copied";
+    setTimeout(() => el("btnCopy").textContent = "Copy LaTeX", 900);
+  }
+
+  // Buttons
+  el("btnAddMC").addEventListener("click", () => createQuestion("multiple_choice"));
+  el("btnAddNum").addEventListener("click", () => createQuestion("numeric"));
+  el("btnAddWritten").addEventListener("click", () => createQuestion("written"));
+
+  el("btnSave").addEventListener("click", saveEdits);
+  el("btnDelete").addEventListener("click", deleteSelected);
+  el("btnDuplicate").addEventListener("click", duplicateSelected);
+  el("btnShuffleSelected").addEventListener("click", shuffleSelected);
+  el("btnShuffleAll").addEventListener("click", shuffleAll);
+  el("btnGenerate").addEventListener("click", generateLatex);
+  el("btnCopy").addEventListener("click", copyLatex);
+  el("btnGroupSelected").addEventListener("click", groupSelected);
+  el("btnUngroupSelected").addEventListener("click", ungroupSelected);
+
+
+  // Table Builder wiring
+  el("btnOpenTableBuilder").addEventListener("click", openTableModal);
+  el("btnCloseTableModal").addEventListener("click", closeTableModal);
+  el("btnAddTableCol").addEventListener("click", addTableColumn);
+  el("btnAddTableRow").addEventListener("click", addTableRow);
+  el("btnRemoveTableCol").addEventListener("click", removeTableColumn);
+  el("btnRemoveTableRow").addEventListener("click", removeTableRow);
+  el("btnInsertTableLatex").addEventListener("click", () => {
+    insertTableLatex();
+    closeTableModal();
+  });
+
+  el("qType").addEventListener("change", () => {
+    const q = state.questions.find(x => x.id === state.selectedId);
+    if (!q) return;
+    q.type = el("qType").value;
+    if (q.type === "multiple_choice") clamp4Choices(q);
+    loadEditor(q.id);
+    renderList();
+  });
+
+  el("btnClearSaved").addEventListener("click", () => {
+  clearCache();
+  // Optional: also clear current session
+  state.questions = [];
+  state.selectedId = null;
+  renderList();
+  loadEditor(null);
+  });
+
+
+
+  // Drag-and-drop reorder
+  new Sortable(el("qList"), {
+    handle: ".handle",
+    animation: 150,
+    onEnd: (evt) => {
+      if (evt.oldIndex === evt.newIndex) return;
+
+      const movedItem = state.questions[evt.oldIndex];
+      if (!movedItem) return;
+
+      // If not grouped, normal move
+      if (!movedItem.groupId) {
+        const moved = state.questions.splice(evt.oldIndex, 1)[0];
+        state.questions.splice(evt.newIndex, 0, moved);
+        renderList();
+        loadEditor(state.selectedId);
+        return;
+      }
+
+      // If grouped, move the entire contiguous group block
+      const gid = movedItem.groupId;
+
+      // Determine the group's contiguous start/end around oldIndex
+      let start = evt.oldIndex;
+      while (start > 0 && state.questions[start - 1].groupId === gid) start--;
+
+      let end = evt.oldIndex;
+      while (end < state.questions.length - 1 && state.questions[end + 1].groupId === gid) end++;
+
+      const block = state.questions.splice(start, end - start + 1);
+
+      // Compute insertion index after removal
+      let insertAt = evt.newIndex;
+
+      // If the block was removed from above the insertion point, adjust
+      if (insertAt > start) insertAt -= block.length;
+
+      // Clamp insertion point
+      if (insertAt < 0) insertAt = 0;
+      if (insertAt > state.questions.length) insertAt = state.questions.length;
+
+      state.questions.splice(insertAt, 0, ...block);
+
+      renderList();
+      loadEditor(state.selectedId);
+    }
+
+  });
+
+loadFromCache();
+renderList();
+if (state.selectedId) loadEditor(state.selectedId);
+})();
+
+</script>
+</body>
+</html>
