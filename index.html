@@ -30,6 +30,7 @@
         <button class="btn-add" id="btnAddMC">Add MC</button>
         <button class="btn-add" id="btnAddNum">Add Numeric</button>
         <button class="btn-add" id="btnAddWritten">Add Written</button>
+        <button class="btn-add" id="btnAddInfo">Add Info</button>
         <button class="btn-shuffle" id="btnShuffleSelected">Shuffle Selected</button>
         <button class="btn-shuffle" id="btnShuffleAll">Shuffle All</button>
         <button class="btn-group" id="btnGroupSelected">Group Selected</button>
@@ -49,6 +50,8 @@
       <div class="btnrow">
         <button class="ok" id="btnGenerate">Generate LaTeX</button>
         <button id="btnCopy">Copy LaTeX</button>
+        <button id="btnSaveKey">Save Key Snapshot</button>
+        <button id="btnShowShuffleMap">Show Shuffle Map</button>
       </div>
     </div>
     <div class="bd">
@@ -88,6 +91,7 @@
                   <option value="multiple_choice">Multiple Choice</option>
                   <option value="numeric">Numeric Response</option>
                   <option value="written">Written Response</option>
+                  <option value="info">Info Box </option>
                 </select>
               </div>
               <div class="field">
@@ -154,6 +158,13 @@
             </div>
             <div class="small">This mapping is not inserted into the student test; it is for teachers to verify shuffles/reorders.</div>
           </div>
+
+          <div class="field">
+            <label>Shuffle Tracking (Saved Key → Current Order)</label>
+            <div id="shuffleMapOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
+              <div class="small muted">Save a key snapshot, then shuffle/reorder to see movements.</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -205,9 +216,11 @@
 <script>
 (() => {
   const state = {
-    questions: [],
-    selectedId: null
+  questions: [],
+  selectedId: null,
+  savedKeys: [] // array of snapshots
   };
+
 
   const el = (id) => document.getElementById(id);
 
@@ -252,7 +265,11 @@
 
     const idxSpan = document.createElement("span");
     idxSpan.className = "badge";
-    idxSpan.textContent = "Q" + (idx + 1);
+    if (q.type === "info") {
+      idxSpan.textContent = "INFO";
+    } else {
+      idxSpan.textContent = "Q" + questionNumberUpTo(idx);
+    }
 
     top.appendChild(badge);
     top.appendChild(idxSpan);
@@ -296,6 +313,20 @@
 
 
 
+  function questionNumberUpTo(index) {
+  let n = 0;
+  for (let k = 0; k <= index; k++) {
+    if (state.questions[k].type !== "info") n++;
+  }
+  return n;
+  }
+
+  function getDisplayedLabelAtIndex(index) {
+    const q = state.questions[index];
+    if (!q) return "";
+    if (q.type === "info") return "INFO";
+    return "Q" + questionNumberUpTo(index);
+  }
 
 
   function renderList() {
@@ -307,14 +338,14 @@
     while (i < state.questions.length) {
       const q = state.questions[i];
 
-      // If NOT grouped → render normally
+      // Not grouped: render directly
       if (!q.groupId) {
         renderQuestionCard(q, i, list);
         i++;
         continue;
       }
 
-      // If grouped → collect contiguous group
+      // Grouped: wrap contiguous items in qgroup container
       const gid = q.groupId;
       const groupDiv = document.createElement("div");
       groupDiv.className = "qgroup";
@@ -332,6 +363,7 @@
     el("qCount").textContent = state.questions.length.toString();
   }
 
+
   function loadEditor(qid) {
     const q = state.questions.find(x => x.id === qid);
     if (!q) {
@@ -339,13 +371,23 @@
       el("editorArea").style.display = "none";
       return;
     }
-    el("selectedInfo").textContent = `Editing ${qid} (rendered position: Q${state.questions.indexOf(q) + 1})`;
+    const idx = state.questions.indexOf(q);
+    el("selectedInfo").textContent =
+      `Editing ${qid} (rendered position: ${q.type === "info" ? "INFO" : ("Q" + questionNumberUpTo(idx))})`;
     el("editorArea").style.display = "block";
 
     el("qType").value = q.type;
     el("qPoints").value = (q.points ?? "") === null ? "" : (q.points ?? "");
     el("qPrompt").value = q.prompt ?? "";
     el("qImages").value = (q.images ?? []).join("\n");
+
+        // Hide points for Info items (not a question)
+    if (q.type === "info") {
+      el("qPoints").value = "";
+      el("qPoints").disabled = true;
+    } else {
+      el("qPoints").disabled = false;
+    }
 
     if (q.type === "multiple_choice") {
       el("mcArea").style.display = "block";
@@ -404,6 +446,8 @@
       choices: null,
       correctChoiceId: null,
       numericAnswer: "",
+      infoImageScale: "0.75",
+
     };
 
     if (type === "multiple_choice") {
@@ -502,7 +546,21 @@
 
   if (selectedUnits.length < 2) return;
 
-  shuffleArrayInPlace(selectedUnits);
+    // Guarantee selected units change order when possible
+  if (selectedUnits.length >= 2) {
+    // For 2 units, swap; for 3+, reshuffle until different
+    if (selectedUnits.length === 2) {
+      [selectedUnits[0], selectedUnits[1]] = [selectedUnits[1], selectedUnits[0]];
+    } else {
+      const originalSig = selectedUnits.map(u => u.ids.join("|")).join("||");
+      for (let attempt = 0; attempt < 12; attempt++) {
+        shuffleArrayInPlace(selectedUnits);
+        const newSig = selectedUnits.map(u => u.ids.join("|")).join("||");
+        if (newSig !== originalSig) break;
+      }
+    }
+  }
+
 
   // Put shuffled units back into their original unit positions
   selectedUnitIndexes.forEach((unitPos, k) => {
@@ -518,18 +576,54 @@
   loadEditor(state.selectedId);
 }
 
+function sameOrderByUnit(unitsA, unitsB) {
+  if (unitsA.length !== unitsB.length) return false;
+  for (let i = 0; i < unitsA.length; i++) {
+    // Compare by a stable signature; ids list is stable for the unit
+    const a = unitsA[i].ids.join("|");
+    const b = unitsB[i].ids.join("|");
+    if (a !== b) return false;
+  }
+  return true;
+}
+
+function forceDifferentShuffleUnits(units) {
+  if (units.length < 2) return false;
+
+  // Make a copy to compare against
+  const original = units.map(u => ({ ids: [...u.ids], items: u.items }));
+
+  // If exactly 2, just swap for guaranteed change
+  if (units.length === 2) {
+    [units[0], units[1]] = [units[1], units[0]];
+    return true;
+  }
+
+  // Try a few times to get a different permutation
+  for (let attempt = 0; attempt < 12; attempt++) {
+    shuffleArrayInPlace(units);
+    if (!sameOrderByUnit(units, original)) return true;
+  }
+
+  // Extremely unlikely fallback: force a change by swapping first two
+  [units[0], units[1]] = [units[1], units[0]];
+  return true;
+}
 
   function shuffleAll() {
   const units = getGroupUnits(state.questions);
 
-  shuffleArrayInPlace(units);
+  // Guarantee a different order when possible
+  const changed = forceDifferentShuffleUnits(units);
+  if (!changed) return;
 
-  // Flatten back to questions
   state.questions = units.flatMap(u => u.items);
 
   renderList();
   loadEditor(state.selectedId);
+  if (latestSnapshotId && latestSnapshotId()) renderShuffleMap(latestSnapshotId());
 }
+
 
 
 function getGroupUnits(list) {
@@ -646,6 +740,116 @@ function groupNumberMap() {
   });
   return map;
 }
+
+function getAnswerLabel(q) {
+  if (q.type === "multiple_choice") {
+    clamp4Choices(q);
+    const idx = q.choices.findIndex(c => c.id === q.correctChoiceId);
+    return ["A","B","C","D"][Math.max(0, idx)];
+  }
+  if (q.type === "numeric") {
+    return (q.numericAnswer && q.numericAnswer.trim()) ? q.numericAnswer.trim() : "(no answer)";
+  }
+  return "(written)";
+}
+
+function saveKeySnapshot() {
+  if (!state.questions.length) return;
+
+  const name = prompt("Name this key snapshot (e.g., Version A) :", `Key ${state.savedKeys.length + 1}`);
+  if (name === null) return;
+
+  const snapshot = {
+    id: uid("key"),
+    name: (name || `Key ${state.savedKeys.length + 1}`).trim(),
+    createdAt: new Date().toISOString(),
+    order: state.questions.map(q => q.id),
+    info: state.questions.map((q, idx) => ({
+    qid: q.id,
+    originalIndex: idx,                 // keep raw position for internal tracking
+    originalLabel: getDisplayedLabelAtIndex(idx),  // Q# or INFO
+    type: q.type,
+    groupId: q.groupId || null,
+    answer: (q.type === "info") ? "—" : getAnswerLabel(q),
+    promptPreview: (q.prompt || "").replace(/\s+/g, " ").trim().slice(0, 60)
+  }))
+
+  };
+
+  state.savedKeys.unshift(snapshot);
+  renderShuffleMap(snapshot.id);
+}
+
+function latestSnapshotId() {
+  return state.savedKeys.length ? state.savedKeys[0].id : null;
+}
+
+function renderShuffleMap(snapshotId = null) {
+  const out = el("shuffleMapOut");
+  if (!state.savedKeys.length) {
+    out.innerHTML = `<div class="small muted">No saved key snapshots yet.</div>`;
+    return;
+  }
+
+  const snap = snapshotId
+    ? state.savedKeys.find(s => s.id === snapshotId)
+    : state.savedKeys[0];
+
+  if (!snap) {
+    out.innerHTML = `<div class="small muted">Snapshot not found.</div>`;
+    return;
+  }
+
+  // Build current index lookup: qid -> current index (0-based)
+  const currentIndex = new Map();
+  state.questions.forEach((q, idx) => currentIndex.set(q.id, idx));
+
+  // Build group numbering map (nice display)
+  const gmap = groupNumberMap();
+
+  const rows = snap.info.map(item => {
+    const nowIdx = currentIndex.get(item.qid);
+    const isMissing = (nowIdx === undefined);
+
+    const nowLabel = isMissing ? "(deleted)" : getDisplayedLabelAtIndex(nowIdx);
+
+    // moved: label changed (Q# changes) — this ignores INFO counting as a question
+    const moved = !isMissing && nowLabel !== item.originalLabel;
+
+    const groupLabel = item.groupId ? `GROUP ${gmap.get(item.groupId) || "?"}` : "";
+
+    return `<tr>
+      <td>${item.originalLabel}</td>
+      <td>${isMissing ? `<span class="muted">(deleted)</span>` : nowLabel}</td>
+      <td>${item.type.replace("_"," ")}</td>
+      <td>${groupLabel}</td>
+      <td>${item.answer}</td>
+      <td>${item.promptPreview}${(item.promptPreview || "").length >= 60 ? "…" : ""}</td>
+      <td>${isMissing ? "—" : (moved ? "Moved" : "Same")}</td>
+    </tr>`;
+  }).join("");
+
+  out.innerHTML = `
+    <div class="small muted" style="margin-bottom:8px;">
+      Snapshot: <b>${snap.name}</b> • Saved: ${new Date(snap.createdAt).toLocaleString()}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Original #</th>
+          <th>Current #</th>
+          <th>Type</th>
+          <th>Group</th>
+          <th>Answer</th>
+          <th>Prompt (preview)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 
 
 // ----------------------
@@ -898,50 +1102,78 @@ function insertTableLatex() {
   loadEditor(q.id);
 }
 
-  function latexQuestionBlock(q) {
-    const pts = (q.points !== "" && q.points !== null && q.points !== undefined) ? `[${q.points}] ` : " ";
-    const imgLines = (q.images || []).map(fn =>
-      `\\begin{center}\n\\includegraphics{${escapeLatexUnsafe(fn)}}\n\\end{center}\n`
-    ).join("");
+ function latexQuestionBlock(q) {
+  const pts = (q.points !== "" && q.points !== null && q.points !== undefined) ? `[${q.points}] ` : " ";
+  const imgLines = (q.images || []).map(fn =>
+    `\\begin{center}\n\\includegraphics{${escapeLatexUnsafe(fn)}}\n\\end{center}\n`
+  ).join("");
 
-    if (q.type === "multiple_choice") {
-      clamp4Choices(q);
-      const choiceLines = q.choices.map(ch => {
-        const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
-        return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
-      }).join("\n");
+  let inner = "";
 
-      return [
-        imgLines,
-        `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
-        `\\begin{choices}`,
-        choiceLines,
-        `\\end{choices}`,
-        ``
-      ].join("\n");
-    }
+  if (q.type === "info") {
+  const scale = (q.infoImageScale || "0.75").trim() || "0.75";
+  const imgs = (q.images || []).map(fn =>
+    `\\includegraphics[scale=${scale}]{${escapeLatexUnsafe(fn)}}`
+  ).join("\n");
 
-    if (q.type === "numeric") {
-      const ans = (q.numericAnswer || "").trim();
+  const inner = [
+    `\\begin{tcolorbox}[colback=white]`,
+    `\\begin{center}`,
+    escapeLatexUnsafe(q.prompt || ""),
+    imgs ? imgs : "",
+    `\\end{center}`,
+    `\\end{tcolorbox}`
+  ].filter(Boolean).join("\n");
 
-      return [
-        imgLines,
-        `\\question${pts}${escapeLatexUnsafe(q.prompt)} \\numbox \n`,
-        ans ? `\\ifprintanswers\n ${escapeLatexUnsafe(ans)}\n\\fi` : ``,
-        ``
-      ].join("\n");
-    }
+  // Still wrap in samepage so it stays together with itself
+  return [
+    `\\begin{samepage}`,
+    inner,
+    `\\end{samepage}`,
+    ``
+  ].join("\n");
+}
 
+  if (q.type === "multiple_choice") {
+    clamp4Choices(q);
 
+    const choiceLines = q.choices.map(ch => {
+      const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
+      return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
+    }).join("\n");
 
-
-
-    return [
+    inner = [
       imgLines,
       `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
-      ``
+      `\\begin{choices}`,
+      choiceLines,
+      `\\end{choices}`
+    ].join("\n");
+  } else if (q.type === "numeric") {
+    // Your current numeric behavior (adjust to your final choice)
+    // Example: key-only answer:
+    const ans = (q.numericAnswer || "").trim();
+    inner = [
+      imgLines,
+      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+      ans ? `\\ifprintanswers\n\\textbf{Answer:} ${escapeLatexUnsafe(ans)}\n\\fi` : ``
+    ].join("\n");
+  } else {
+    inner = [
+      imgLines,
+      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`
     ].join("\n");
   }
+
+  // Wrap every question in samepage
+  return [
+    `\\begin{samepage}`,
+    inner,
+    `\\end{samepage}`,
+    ``
+  ].join("\n");
+}
+
 
   function generateLatex() {
     const testName = el("testName").value || "TEST NAME GOES HERE";
@@ -969,9 +1201,6 @@ function insertTableLatex() {
 \\usepackage{needspace}
 \\usepackage{etoolbox}
 
-\\renewcommand{\\questionshook}{%
-  \\pretocmd{\\question}{\\Needspace{10\\baselineskip}}{}{}%
-}
 
 \\def\\numbox{
 \\begin{center}
@@ -1042,26 +1271,39 @@ ${questionsLatex}
       return;
     }
 
-    const rows = state.questions.map((q, i) => {
-      let ans = "";
+      let qNum = 0;
+  const rows = state.questions.map((q) => {
+    let label = "";
+    let ans = "";
+
+    if (q.type === "info") {
+      label = "INFO";
+      ans = "—";
+    } else {
+      qNum++;
+      label = "Q" + qNum;
+
       if (q.type === "multiple_choice") {
         clamp4Choices(q);
         const idx = q.choices.findIndex(c => c.id === q.correctChoiceId);
-        const letter = ["A","B","C","D"][Math.max(0, idx)];
-        ans = letter;
+        ans = ["A","B","C","D"][Math.max(0, idx)];
       } else if (q.type === "numeric") {
         ans = (q.numericAnswer && q.numericAnswer.trim()) ? q.numericAnswer.trim() : "(no answer)";
       } else {
         ans = "(written)";
       }
-      const promptPreview = (q.prompt || "").replace(/\s+/g, " ").trim().slice(0, 60);
-      return `<tr>
-        <td>Q${i+1}</td>
-        <td>${q.type.replace("_"," ")}</td>
-        <td>${promptPreview}${(q.prompt||"").length>60?"…":""}</td>
-        <td>${ans}</td>
-      </tr>`;
-    }).join("");
+    }
+
+    const promptPreview = (q.prompt || "").replace(/\s+/g, " ").trim().slice(0, 60);
+
+    return `<tr>
+      <td>${label}</td>
+      <td>${q.type.replace("_"," ")}</td>
+      <td>${promptPreview}${(q.prompt||"").length>60?"…":""}</td>
+      <td>${ans}</td>
+    </tr>`;
+  }).join("");
+
 
     container.innerHTML = `
       <table>
@@ -1101,6 +1343,8 @@ ${questionsLatex}
   el("btnGroupSelected").addEventListener("click", groupSelected);
   el("btnUngroupSelected").addEventListener("click", ungroupSelected);
 
+  el("btnAddInfo").addEventListener("click", () => createQuestion("info"));
+
 
   // Table Builder wiring
   el("btnOpenTableBuilder").addEventListener("click", openTableModal);
@@ -1132,6 +1376,12 @@ ${questionsLatex}
   loadEditor(null);
   });
 
+  el("btnSaveKey").addEventListener("click", saveKeySnapshot);
+  el("btnShowShuffleMap").addEventListener("click", () => {
+  const sid = latestSnapshotId();
+  if (!sid) return;
+  renderShuffleMap(sid);
+  });
 
 
   // Drag-and-drop reorder
