@@ -1285,64 +1285,97 @@ function insertGraphLatex() {
 
 
  function latexQuestionBlock(q) {
-  const pts = (q.points !== "" && q.points !== null && q.points !== undefined) ? `[${q.points}] ` : " ";
+  const pts =
+    (q.points !== "" && q.points !== null && q.points !== undefined)
+      ? `[${q.points}] `
+      : " ";
+
   const imgLines = (q.images || []).map(fn =>
     `\\begin{center}\n\\includegraphics{${escapeLatexUnsafe(fn)}}\n\\end{center}\n`
   ).join("");
 
-  let inner = "";
-
+  // INFO items (not questions)
   if (q.type === "info") {
-  const scale = (q.infoImageScale || "0.75").trim() || "0.75";
-  const imgs = (q.images || []).map(fn =>
-    `\\includegraphics[scale=${scale}]{${escapeLatexUnsafe(fn)}}`
-  ).join("\n");
+    const scale = (q.infoImageScale || "0.75").trim() || "0.75";
+    const imgs = (q.images || []).map(fn =>
+      `\\includegraphics[scale=${scale}]{${escapeLatexUnsafe(fn)}}`
+    ).join("\n");
 
-  const inner = [
-    `\\begin{tcolorbox}[colback=white]`,
-    `\\begin{center}`,
-    escapeLatexUnsafe(q.prompt || ""),
-    imgs ? imgs : "",
-    `\\end{center}`,
-    `\\end{tcolorbox}`
+    const innerInfo = [
+      `\\begin{tcolorbox}[colback=white]`,
+      `\\begin{center}`,
+      escapeLatexUnsafe(q.prompt || ""),
+      imgs ? imgs : "",
+      `\\end{center}`,
+      `\\end{tcolorbox}`
+    ].filter(Boolean).join("\n");
+
+    return [
+      `\\begin{samepage}`,
+      innerInfo,
+      `\\end{samepage}`,
+      ``
+    ].join("\n");
+  }
+
+  // MULTIPLE CHOICE
+  if (q.type === "multiple_choice") {
+    clamp4Choices(q);
+
+    const choiceLines = q.choices.map(ch => {
+      const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
+      return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
+    }).join("\n");
+
+    const innerMC = [
+      imgLines,
+      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+      `\\begin{choices}`,
+      choiceLines,
+      `\\end{choices}`
+    ].filter(Boolean).join("\n");
+
+    return [
+      `\\begin{samepage}`,
+      innerMC,
+      `\\end{samepage}`,
+      ``
+    ].join("\n");
+  }
+
+  // NUMERIC
+  if (q.type === "numeric") {
+    const ans = (q.numericAnswer || "").trim();
+
+    const innerNum = [
+      imgLines,
+      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+      `\\numbox`,
+      ans ? `\\ifprintanswers\n\\textbf{Answer:} ${escapeLatexUnsafe(ans)}\n\\fi` : ``
+    ].filter(Boolean).join("\n");
+
+    return [
+      `\\begin{samepage}`,
+      innerNum,
+      `\\end{samepage}`,
+      ``
+    ].join("\n");
+  }
+
+  // WRITTEN (default)
+  const innerWritten = [
+    imgLines,
+    `\\question${pts}${escapeLatexUnsafe(q.prompt)}`
   ].filter(Boolean).join("\n");
 
-  // Still wrap in samepage so it stays together with itself
   return [
     `\\begin{samepage}`,
-    inner,
+    innerWritten,
     `\\end{samepage}`,
     ``
   ].join("\n");
 }
 
-  if (q.type === "multiple_choice") {
-  clamp4Choices(q);
-
-  const choiceLines = q.choices.map(ch => {
-    const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
-    return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
-  }).join("\n");
-
-  inner = [
-    imgLines,
-    `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
-    `\\begin{choices}`,
-    choiceLines,
-    `\\end{choices}`
-  ].join("\n");
-
-}
-
-
-  // Wrap every question in samepage
-  return [
-    `\\begin{samepage}`,
-    inner,
-    `\\end{samepage}`,
-    ``
-  ].join("\n");
-}
 
 
   function generateLatex() {
