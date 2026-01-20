@@ -116,6 +116,11 @@
               <textarea id="qPrompt" placeholder="Type the question here..."></textarea>
             </div>
 
+            <div class="btnrow" style="margin-top:8px;">
+              <button type="button" id="btnOpenTableBuilder">Table Builder</button>
+              <button type="button" id="btnOpenGraphBuilder">Graph Builder</button>
+            </div>
+
             <div class="field">
               <label>Image filename(s) (optional, one per line; must exist in images/ folder)</label>
               <textarea id="qImages" placeholder="diagram1.png&#10;photo2.jpg"></textarea>
@@ -136,16 +141,13 @@
 
             <div id="mcArea">
               <div class="field">
-                <label>Multiple choice options (4) and correct answer</label>
-                <div class="choices" id="mcChoices"></div>
-                <div class="btnrow" style="margin-top:8px;">
-                  <button type="button" id="btnOpenTableBuilder">Table Builder</button>
-                </div>
-                <div class="small">Use this to create a matrix-style choice table (A–D vs columns) and insert it into the prompt or a choice.</div>
-
-
+                <label style="display:block;">Multiple choice options (4) and correct answer</label>
+                <div class="choices" id="mcChoices" style="margin-top:10px;"></div>
+                <div class="small">Use this to create a matrix-style choice table and insert it into the prompt or a choice.</div>
               </div>
             </div>
+
+
 
             <div class="btnrow">
               <button class="primary" id="btnSave">Apply Changes</button>
@@ -222,6 +224,88 @@
     </div>
   </div>
 </div>
+
+
+
+
+<!-- Graph Builder Modal -->
+<div id="graphModal" class="tb-modal">
+  <div class="tb-modal-card" style="max-width:860px;">
+    <div class="tb-modal-hd">
+      <div style="font-weight:600;">Graph Builder (Function Plot)</div>
+      <button type="button" id="btnCloseGraphModal">Close</button>
+    </div>
+
+    
+
+
+
+    <div class="tb-modal-bd">
+      <div class="grid2">
+
+        <div class="field" style="max-width:90px;">
+          <label>Scale</label>
+          <input
+            type="number"
+            id="gScale"
+            value="1"
+            step="0.1"
+            min="0.1"
+            style="text-align:center;"
+          >
+        </div>
+
+        <div class="field">
+          <label>x min</label>
+          <input type="number" id="gXMin" value="-5" step="0.5">
+        </div>
+        <div class="field">
+          <label>x max</label>
+          <input type="number" id="gXMax" value="5" step="0.5">
+        </div>
+
+        <div class="field">
+          <label>y min</label>
+          <input type="number" id="gYMin" value="-5" step="0.5">
+        </div>
+        <div class="field">
+          <label>y max</label>
+          <input type="number" id="gYMax" value="5" step="0.5">
+        </div>
+
+        <div class="field">
+          <label>Grid step (tick distance)</label>
+          <input type="number" id="gStep" value="1" step="0.5" min="0.1">
+        </div>
+
+        <div class="field">
+          <label>Insert into</label>
+          <select id="graphInsertTarget">
+            <option value="prompt">Question Prompt</option>
+            <option value="choice0">Choice A (MC only)</option>
+            <option value="choice1">Choice B (MC only)</option>
+            <option value="choice2">Choice C (MC only)</option>
+            <option value="choice3">Choice D (MC only)</option>
+          </select>
+          <div class="small muted">Choices only apply when the selected item is Multiple Choice.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Function (pgfplots expression)</label>
+        <input type="text" id="gFunc" value="x^2" placeholder="e.g., x^2 - 3*x + 2 or sin(deg(x))">
+        <div class="small muted">
+          Use pgfplots expressions. Examples: <code>x^2</code>, <code>sin(deg(x))</code>, <code>exp(x)</code>.
+        </div>
+      </div>
+
+      <div class="btnrow" style="justify-content:flex-end;">
+        <button type="button" class="primary" id="btnInsertGraphLatex">Insert LaTeX</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
 <script>
@@ -404,9 +488,11 @@
       el("mcArea").style.display = "block";
       clamp4Choices(q);
       renderMCChoices(q);
+
     } else {
       el("mcArea").style.display = "none";
     }
+
 
     // Numeric-only editor area
     if (q.type === "numeric") {
@@ -458,8 +544,9 @@
       correctChoiceId: null,
       numericAnswer: "",
       infoImageScale: "0.75",
-
+    
     };
+
 
     if (type === "multiple_choice") {
       base.choices = [
@@ -494,10 +581,8 @@
 
     if (q.type === "multiple_choice") {
       clamp4Choices(q);
-    } else {
-      // if switching away from MC, keep choices in object (harmless) or clear them.
-      // Keeping is fine; it preserves data if someone flips types accidentally.
     }
+
 
     renderList();
     loadEditor(q.id);
@@ -1091,7 +1176,6 @@ function insertTableLatex() {
   if (!q) return;
 
   if (target === "prompt") {
-    // Insert at cursor in prompt if possible
     const ta = el("qPrompt");
     const start = ta.selectionStart ?? ta.value.length;
     const end = ta.selectionEnd ?? ta.value.length;
@@ -1100,7 +1184,6 @@ function insertTableLatex() {
     return;
   }
 
-  // Insert into one of the MC choices
   if (q.type !== "multiple_choice") return;
   clamp4Choices(q);
 
@@ -1109,9 +1192,97 @@ function insertTableLatex() {
 
   q.choices[idx].text = (q.choices[idx].text || "") + "\n" + latex;
 
-  // Refresh MC editor to show updated choice text
   loadEditor(q.id);
 }
+
+  // ----------------------
+// Graph Builder (Function Plot)
+// ----------------------
+function openGraphModal() {
+  el("graphModal").style.display = "block";
+}
+
+function closeGraphModal() {
+  el("graphModal").style.display = "none";
+}
+
+function buildGraphLatex() {
+  const xmin = Number(el("gXMin").value);
+  const xmax = Number(el("gXMax").value);
+  const ymin = Number(el("gYMin").value);
+  const ymax = Number(el("gYMax").value);
+  const step = Number(el("gStep").value);
+  const func = (el("gFunc").value || "").trim();
+
+  // NEW: scale
+  const scaleRaw = (el("gScale")?.value ?? "1").toString().trim();
+  const scale = Number(scaleRaw);
+
+  if (!Number.isFinite(xmin) || !Number.isFinite(xmax) ||
+      !Number.isFinite(ymin) || !Number.isFinite(ymax) ||
+      !Number.isFinite(step)) {
+    alert("Please enter valid numeric bounds and step.");
+    return "";
+  }
+
+  if (!func) {
+    alert("Please enter a function.");
+    return "";
+  }
+
+  if (!Number.isFinite(scale) || scale <= 0) {
+    alert("Please enter a valid scale (e.g., 1, 0.8, 1.2).");
+    return "";
+  }
+
+  // NOTE: now 7 args, last one is scale
+  return `\\drawfunction{${xmin}}{${xmax}}{${ymin}}{${ymax}}{${step}}{${escapeLatexUnsafe(func)}}{${scale}}`;
+}
+
+
+function insertGraphLatex() {
+  const q = state.questions.find(x => x.id === state.selectedId);
+  if (!q) return;
+
+  const target = el("graphInsertTarget").value;
+  const latex = buildGraphLatex();
+  if (!latex) return;
+
+  // Insert into PROMPT (works for MC, Numeric, Written, Info)
+  if (target === "prompt") {
+    const ta = el("qPrompt");
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+
+    ta.value =
+      ta.value.slice(0, start) +
+      "\n" + latex + "\n" +
+      ta.value.slice(end);
+
+    q.prompt = ta.value;
+
+    closeGraphModal();
+    loadEditor(q.id);
+    return;
+  }
+
+  // Insert into MC choice ONLY
+  if (q.type !== "multiple_choice") {
+    alert("Choice targets only work for Multiple Choice questions.");
+    return;
+  }
+
+  clamp4Choices(q);
+
+  const idx = Number(target.replace("choice", ""));
+  if (Number.isNaN(idx) || idx < 0 || idx > 3) return;
+
+  q.choices[idx].text = (q.choices[idx].text || "") + "\n" + latex;
+
+  closeGraphModal();
+  loadEditor(q.id);
+}
+
 
  function latexQuestionBlock(q) {
   const pts = (q.points !== "" && q.points !== null && q.points !== undefined) ? `[${q.points}] ` : " ";
@@ -1146,36 +1317,23 @@ function insertTableLatex() {
 }
 
   if (q.type === "multiple_choice") {
-    clamp4Choices(q);
+  clamp4Choices(q);
 
-    const choiceLines = q.choices.map(ch => {
-      const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
-      return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
-    }).join("\n");
+  const choiceLines = q.choices.map(ch => {
+    const cmd = (ch.id === q.correctChoiceId) ? "\\CorrectChoice" : "\\choice";
+    return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
+  }).join("\n");
 
-    inner = [
-      imgLines,
-      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
-      `\\begin{choices}`,
-      choiceLines,
-      `\\end{choices}`
-    ].join("\n");
-    } else if (q.type === "numeric") {
-    const ans = (q.numericAnswer || "").trim();
-    inner = [
-      imgLines,
-      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
-      `\\numbox`,
-      // Teacher-only answer (only appears if they compile with \printanswers)
-      ans ? `\\ifprintanswers\n\\textbf{Answer:} ${escapeLatexUnsafe(ans)}\n\\fi` : ``
-    ].filter(Boolean).join("\n");
-    }
- else {
-    inner = [
-      imgLines,
-      `\\question${pts}${escapeLatexUnsafe(q.prompt)}`
-    ].join("\n");
-  }
+  inner = [
+    imgLines,
+    `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+    `\\begin{choices}`,
+    choiceLines,
+    `\\end{choices}`
+  ].join("\n");
+
+}
+
 
   // Wrap every question in samepage
   return [
@@ -1219,6 +1377,7 @@ function insertTableLatex() {
 \\tdplotsetmaincoords{70}{110}
 \\usepackage{multicol}
 \\usepackage{graphicx}
+\\usepackage{pgfplots}
 \\graphicspath{ {./images/} }
 \\usepackage{tcolorbox}
 \\pointsinmargin
@@ -1233,6 +1392,28 @@ function insertTableLatex() {
 \\end{tikzpicture}
 \\end{center}
 }
+
+% Function plot helper (requires pgfplots)
+\\def\\drawfunction#1#2#3#4#5#6#7{%
+\\begin{tikzpicture}[scale=#7]
+\\begin{axis}[
+    axis lines = center,
+    xmin = #1, xmax = #2,
+    ymin = #3, ymax = #4,
+    grid = both,
+    major grid style = {line width=0.8pt, gray!60},
+    minor grid style = {line width=0.4pt, gray!30},
+    xlabel = $x$,
+    ylabel = $y$,
+    samples = 200,
+    xtick distance = #5,
+    ytick distance = #5
+]
+\\addplot[thick, black] {#6};
+\\end{axis}
+\\end{tikzpicture}
+}
+
 
 \\begin{document}
 
@@ -1277,6 +1458,29 @@ ${questionsLatex}
 \\end{tikzpicture}
 \\end{center}
 }
+
+
+% Function plot helper (requires pgfplots)
+\\def\\drawfunction#1#2#3#4#5#6#7{%
+\\begin{tikzpicture}[scale=#7]
+\\begin{axis}[
+    axis lines = center,
+    xmin = #1, xmax = #2,
+    ymin = #3, ymax = #4,
+    grid = both,
+    major grid style = {line width=0.8pt, gray!60},
+    minor grid style = {line width=0.4pt, gray!30},
+    xlabel = $x$,
+    ylabel = $y$,
+    samples = 200,
+    xtick distance = #5,
+    ytick distance = #5
+]
+\\addplot[thick, black] {#6};
+\\end{axis}
+\\end{tikzpicture}
+}
+
 
 \\begin{document}
 
@@ -1416,6 +1620,7 @@ ${questionsLatex}
 
   // Table Builder wiring
   el("btnOpenTableBuilder").addEventListener("click", openTableModal);
+
   el("btnCloseTableModal").addEventListener("click", closeTableModal);
   el("btnAddTableCol").addEventListener("click", addTableColumn);
   el("btnAddTableRow").addEventListener("click", addTableRow);
@@ -1425,6 +1630,8 @@ ${questionsLatex}
     insertTableLatex();
     closeTableModal();
   });
+
+
 
   el("qType").addEventListener("change", () => {
     const q = state.questions.find(x => x.id === state.selectedId);
@@ -1450,6 +1657,12 @@ ${questionsLatex}
   if (!sid) return;
   renderShuffleMap(sid);
   });
+
+  // Graph Builder wiring
+  el("btnOpenGraphBuilder").addEventListener("click", openGraphModal);
+  el("btnCloseGraphModal").addEventListener("click", closeGraphModal);
+  el("btnInsertGraphLatex").addEventListener("click", insertGraphLatex);
+
 
 
   // Drag-and-drop reorder
