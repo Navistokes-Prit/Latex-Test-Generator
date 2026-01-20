@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Exam LaTeX Test Builder (Client-Side)</title>
+  <title> LaTeX Test Builder </title>
 
   <link rel="stylesheet" href="style_pro.css">
 
@@ -65,7 +65,7 @@
           </div>
           <div class="field">
             <label>Header image filename (in Overleaf images/ folder)</label>
-            <input type="text" id="headerImage" value="Image_name_here.png" />
+            <input type="text" id="headerImage" value="Stem Header.png" />
             <div class="small">Overleaf: put the image inside <code>images/</code>. Your LaTeX already has <code>\graphicspath{ {./images/} }</code>.</div>
           </div>
           <div class="field">
@@ -926,7 +926,7 @@ function insertTableLatex() {
 
       return [
         imgLines,
-        `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
+        `\\question${pts}${escapeLatexUnsafe(q.prompt)} \\numbox \n`,
         ans ? `\\ifprintanswers\n ${escapeLatexUnsafe(ans)}\n\\fi` : ``,
         ``
       ].join("\n");
