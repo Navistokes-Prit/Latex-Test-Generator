@@ -187,6 +187,14 @@
               </div>
             </div>
 
+            <div class="field" id="mcColumnsField">
+              <label>Answer choice columns</label>
+              <select id="mcColumns">
+                <option value="1">1 column</option>
+                <option value="2">2 columns</option>
+                <option value="4">4 columns</option>
+              </select>
+            </div>
 
 
             <div class="btnrow">
@@ -495,6 +503,14 @@ function showBuilder() {
       const gid = q.groupId;
       const groupDiv = document.createElement("div");
       groupDiv.className = "qgroup";
+      groupDiv.dataset.gid = gid;
+
+      // Group handle so the whole block is draggable
+      const gHandle = document.createElement("div");
+      gHandle.className = "handle groupHandle";
+      gHandle.textContent = "≡ GROUP";
+      groupDiv.appendChild(gHandle);
+
 
       let j = i;
       while (j < state.questions.length && state.questions[j].groupId === gid) {
@@ -537,12 +553,17 @@ function showBuilder() {
 
     if (q.type === "multiple_choice") {
       el("mcArea").style.display = "block";
+      el("mcColumnsField").style.display = "block";
+
       clamp4Choices(q);
       renderMCChoices(q);
 
+      el("mcColumns").value = q.mcColumns || 1;
     } else {
       el("mcArea").style.display = "none";
+      el("mcColumnsField").style.display = "none";
     }
+
 
 
     // Numeric-only editor area
@@ -595,8 +616,9 @@ function showBuilder() {
       correctChoiceId: null,
       numericAnswer: "",
       infoImageScale: "0.75",
-    
+      mcColumns: 1        // NEW: 1 | 2 | 4
     };
+
 
 
     if (type === "multiple_choice") {
@@ -632,7 +654,10 @@ function showBuilder() {
 
     if (q.type === "multiple_choice") {
       clamp4Choices(q);
+      const v = Number(el("mcColumns").value);
+      q.mcColumns = (v === 2 || v === 4) ? v : 1;
     }
+
 
 
     renderList();
@@ -676,26 +701,21 @@ function showBuilder() {
   }
 
   function shuffleSelected() {
-  const units = getGroupUnits(state.questions);
+    const units = getGroupUnits(state.questions);
 
-  // A unit is selected if ANY item in it is selected.
-  // (You can change to "every item selected" if you prefer stricter behavior.)
-  const selectedUnitIndexes = [];
-  const selectedUnits = [];
+    const selectedUnitIndexes = [];
+    const selectedUnits = [];
 
-  units.forEach((u, idx) => {
-    const isSelectedUnit = u.items.some(q => q.selected);
-    if (isSelectedUnit) {
-      selectedUnitIndexes.push(idx);
-      selectedUnits.push(u);
-    }
-  });
+    units.forEach((u, idx) => {
+      const isSelectedUnit = u.items.some(q => q.selected);
+      if (isSelectedUnit) {
+        selectedUnitIndexes.push(idx);
+        selectedUnits.push(u);
+      }
+    });
 
-  if (selectedUnits.length < 2) return;
+    if (selectedUnits.length < 2) return;
 
-    // Guarantee selected units change order when possible
-  if (selectedUnits.length >= 2) {
-    // For 2 units, swap; for 3+, reshuffle until different
     if (selectedUnits.length === 2) {
       [selectedUnits[0], selectedUnits[1]] = [selectedUnits[1], selectedUnits[0]];
     } else {
@@ -706,22 +726,20 @@ function showBuilder() {
         if (newSig !== originalSig) break;
       }
     }
+
+    selectedUnitIndexes.forEach((unitPos, k) => {
+      units[unitPos] = selectedUnits[k];
+    });
+
+    state.questions = units.flatMap(u => u.items);
+
+    // Keep selections: do NOT clear q.selected
+    renderList();
+    loadEditor(state.selectedId);
+
+    refreshAfterReorder();
   }
 
-
-  // Put shuffled units back into their original unit positions
-  selectedUnitIndexes.forEach((unitPos, k) => {
-    units[unitPos] = selectedUnits[k];
-  });
-
-  state.questions = units.flatMap(u => u.items);
-
-  // Optional: clear selection after shuffle
-  state.questions = units.flatMap(u => u.items);
-
-  renderList();
-  loadEditor(state.selectedId);
-}
 
 function sameOrderByUnit(unitsA, unitsB) {
   if (unitsA.length !== unitsB.length) return false;
@@ -760,7 +778,6 @@ function forceDifferentShuffleUnits(units) {
   function shuffleAll() {
   const units = getGroupUnits(state.questions);
 
-  // Guarantee a different order when possible
   const changed = forceDifferentShuffleUnits(units);
   if (!changed) return;
 
@@ -768,17 +785,16 @@ function forceDifferentShuffleUnits(units) {
 
   renderList();
   loadEditor(state.selectedId);
-  if (latestSnapshotId && latestSnapshotId()) renderShuffleMap(latestSnapshotId());
+
+  refreshAfterReorder();
 }
 
+
 function shuffleWithinGroups({ onlySelectedGroups = false } = {}) {
-  // Break list into units (ungrouped singletons or contiguous group blocks)
   const units = getGroupUnits(state.questions);
 
-  // Shuffle items within each grouped unit
   units.forEach(u => {
     const isGrouped = u.items.length > 1 && u.items[0].groupId;
-
     if (!isGrouped) return;
 
     if (onlySelectedGroups) {
@@ -786,8 +802,6 @@ function shuffleWithinGroups({ onlySelectedGroups = false } = {}) {
       if (!selectedInUnit) return;
     }
 
-    // Shuffle IN PLACE inside the unit
-    // Optional: ensure it changes when possible
     if (u.items.length === 2) {
       [u.items[0], u.items[1]] = [u.items[1], u.items[0]];
     } else if (u.items.length > 2) {
@@ -802,10 +816,12 @@ function shuffleWithinGroups({ onlySelectedGroups = false } = {}) {
 
   state.questions = units.flatMap(u => u.items);
 
-  // Keep selections (do not clear)
   renderList();
   loadEditor(state.selectedId);
+
+  refreshAfterReorder();
 }
+
 
 
 function getGroupUnits(list) {
@@ -981,6 +997,9 @@ function renderShuffleMap(snapshotId = null) {
     out.innerHTML = `<div class="small muted">Snapshot not found.</div>`;
     return;
   }
+
+
+
 
   // Build current index lookup: qid -> current index (0-based)
   const currentIndex = new Map();
@@ -1254,6 +1273,14 @@ function buildLatexTable() {
   ].join("\n");
 }
 
+function latexBlockHeader(q) {
+  // sentinel comment for robust importing + needspace for page-breaking control
+  return [
+    `%==QBLOCK id=${q.id}==`,
+    `\\Needspace{8\\baselineskip}`
+  ].join("\n");
+}
+
 function insertTableLatex() {
   const target = el("tableInsertTarget").value;
   const latex = buildLatexTable();
@@ -1397,14 +1424,15 @@ function insertGraphLatex() {
     ].filter(Boolean).join("\n");
 
     return [
-      `\\begin{samepage}`,
+      latexBlockHeader(q),
       innerInfo,
-      `\\end{samepage}`,
       ``
     ].join("\n");
+
+
   }
 
-  // MULTIPLE CHOICE
+    // MULTIPLE CHOICE
   if (q.type === "multiple_choice") {
     clamp4Choices(q);
 
@@ -1413,21 +1441,33 @@ function insertGraphLatex() {
       return `    ${cmd} ${escapeLatexUnsafe(ch.text)}`.trimEnd();
     }).join("\n");
 
+    // Ensure numeric comparison works even if loaded from storage as string
+    const cols = Number(q.mcColumns || 1);
+
+    let choicesBody = choiceLines;
+    if (cols === 2 || cols === 4) {
+      choicesBody = [
+        `\\begin{multicols}{${cols}}`,
+        choiceLines,
+        `\\end{multicols}`
+      ].join("\n");
+    }
+
     const innerMC = [
       imgLines,
       `\\question${pts}${escapeLatexUnsafe(q.prompt)}`,
       `\\begin{choices}`,
-      choiceLines,
+      choicesBody,
       `\\end{choices}`
     ].filter(Boolean).join("\n");
 
     return [
-      `\\begin{samepage}`,
+      latexBlockHeader(q),
       innerMC,
-      `\\end{samepage}`,
       ``
     ].join("\n");
   }
+
 
   // NUMERIC
   if (q.type === "numeric") {
@@ -1441,11 +1481,11 @@ function insertGraphLatex() {
     ].filter(Boolean).join("\n");
 
     return [
-      `\\begin{samepage}`,
+      latexBlockHeader(q),
       innerNum,
-      `\\end{samepage}`,
       ``
     ].join("\n");
+
   }
 
   // WRITTEN (default)
@@ -1455,11 +1495,11 @@ function insertGraphLatex() {
   ].filter(Boolean).join("\n");
 
   return [
-    `\\begin{samepage}`,
+    latexBlockHeader(q),
     innerWritten,
-    `\\end{samepage}`,
     ``
   ].join("\n");
+
 }
 
 function stripLatexNoise(s) {
@@ -1556,75 +1596,87 @@ function parseQuestionsFromLatex(latex) {
   const src = (latex || "").replace(/\r/g, "");
   const blocks = [];
 
-  // split into samepage blocks
-  const re = /\\begin\{samepage\}([\s\S]*?)\\end\{samepage\}/g;
-  let m;
-  while ((m = re.exec(src)) !== null) {
-    const b = m[1];
-    if (b && b.trim()) blocks.push(b);
-  }
+  // split into QBLOCK blocks (recommended, robust)
+const parts = src.split(/^\s*%==QBLOCK\b/m);
+
+// parts[0] is anything before the first block; ignore it
+for (let i = 1; i < parts.length; i++) {
+  const chunk = parts[i];
+
+  // First line looks like: " id=q_xxx=="
+  const firstLine = (chunk.split("\n")[0] || "").trim();
+  const idMatch = firstLine.match(/id=([^\s=]+)==/);
+  const blockId = idMatch ? idMatch[1] : uid("q");
+
+  const cleaned = chunk.replace(/^[^\n]*\n/, ""); // drop header line
+  const b = cleaned.trim();
+  if (b) blocks.push({ id: blockId, body: b });
+}
+
+
 
   const questions = [];
 
-  for (const b of blocks) {
-    const block = b.trim();
+for (const entry of blocks) {
+  const block = entry.body.trim();
 
-    // classify
-    const isInfo = /\\begin\{tcolorbox\}/.test(block);
-    const isMC = /\\begin\{choices\}/.test(block);
-    const isNumeric = /\\numbox/.test(block);
+  // classify
+  const isInfo = /\\begin\{tcolorbox\}/.test(block);
+  const isMC = /\\begin\{choices\}/.test(block);
+  const isNumeric = /\\numbox/.test(block);
 
-    const q = {
-      id: uid("q"),
-      type: "written",
-      points: "",
-      prompt: "",
-      images: [],
-      shuffleSelected: true,
-      choices: null,
-      correctChoiceId: null,
-      numericAnswer: "",
-      infoImageScale: "0.75",
-      selected: false,
-      groupId: null
-    };
+  const q = {
+    id: entry.id,              // IMPORTANT: keep the ID from the QBLOCK header
+    type: "written",
+    points: "",
+    prompt: "",
+    images: [],
+    shuffleSelected: true,
+    choices: null,
+    correctChoiceId: null,
+    numericAnswer: "",
+    infoImageScale: "0.75",
+    selected: false,
+    groupId: null,
+    mcColumns: 1,
+  };
 
-    // images (your generator puts these above the question; for info they’re inside the box)
-    const imgs = extractAllIncludeGraphics(block);
+  // images
+  const imgs = extractAllIncludeGraphics(block);
 
-    if (isInfo) {
-      q.type = "info";
-      q.prompt = extractInfoPrompt(block);
-      q.images = imgs;
-      q.infoImageScale = inferInfoImageScale(block);
-      q.points = ""; // info has no points
-    } else if (isMC) {
-      q.type = "multiple_choice";
-      q.points = extractPoints(block);
-      q.prompt = extractQuestionPrompt(block);
-      q.images = imgs;
+  if (isInfo) {
+    q.type = "info";
+    q.prompt = extractInfoPrompt(block);
+    q.images = imgs;
+    q.infoImageScale = inferInfoImageScale(block);
+    q.points = "";
+  } else if (isMC) {
+    q.type = "multiple_choice";
+    q.points = extractPoints(block);
+    q.prompt = extractQuestionPrompt(block);
+    q.images = imgs;
 
-      const { choices, correctIndex } = extractChoices(block);
-      q.choices = choices.map(text => ({ id: uid("c"), text }));
-      q.correctChoiceId = q.choices[Math.max(0, Math.min(3, correctIndex))].id;
-    } else if (isNumeric) {
-      q.type = "numeric";
-      q.points = extractPoints(block);
-      q.prompt = extractQuestionPrompt(block);
-      q.images = imgs;
-      q.numericAnswer = extractNumericAnswer(block);
-    } else {
-      // written
-      q.type = "written";
-      q.points = extractPoints(block);
-      q.prompt = extractQuestionPrompt(block);
-      q.images = imgs;
-    }
-
-    questions.push(q);
+    const { choices, correctIndex } = extractChoices(block);
+    q.choices = choices.map(text => ({ id: uid("c"), text }));
+    q.correctChoiceId = q.choices[Math.max(0, Math.min(3, correctIndex))].id;
+  } else if (isNumeric) {
+    q.type = "numeric";
+    q.points = extractPoints(block);
+    q.prompt = extractQuestionPrompt(block);
+    q.images = imgs;
+    q.numericAnswer = extractNumericAnswer(block);
+  } else {
+    q.type = "written";
+    q.points = extractPoints(block);
+    q.prompt = extractQuestionPrompt(block);
+    q.images = imgs;
   }
 
-  return questions;
+  questions.push(q);
+}
+
+return questions;
+
 }
 
 
@@ -1661,6 +1713,8 @@ function parseQuestionsFromLatex(latex) {
 \\usepackage{multicol}
 \\usepackage{graphicx}
 \\usepackage{pgfplots}
+\\usepackage{needspace}
+
 \\graphicspath{ {./images/} }
 \\usepackage{tcolorbox}
 \\pointsinmargin
@@ -1875,6 +1929,18 @@ ${questionsLatex}
     `;
   }
 
+  function refreshAfterReorder() {
+    // Update the right-side mapping panel
+    renderMapping();
+
+    // If a snapshot exists, update the shuffle tracking panel too
+    const sid = latestSnapshotId();
+    if (sid) renderShuffleMap(sid);
+
+    // Optional but recommended: persist order changes
+    saveToCache();
+  }
+
   async function copyLatex() {
     const txt = el("latexOut").value;
     if (!txt) return;
@@ -1901,6 +1967,13 @@ ${questionsLatex}
 
   el("btnAddInfo").addEventListener("click", () => createQuestion("info"));
 
+  el("mcColumns").addEventListener("change", () => {
+    const q = state.questions.find(x => x.id === state.selectedId);
+    if (!q || q.type !== "multiple_choice") return;
+
+    const v = Number(el("mcColumns").value);
+    q.mcColumns = (v === 2 || v === 4) ? v : 1;
+  });
 
   // Table Builder wiring
   el("btnOpenTableBuilder").addEventListener("click", openTableModal);
@@ -1973,7 +2046,7 @@ ${questionsLatex}
     const parsed = parseQuestionsFromLatex(latex);
 
     if (!parsed.length) {
-      alert("No questions found. Ensure the pasted LaTeX includes \\begin{samepage}...\\end{samepage} blocks generated by this tool.");
+      alert("No questions found. Ensure the pasted LaTeX includes %==QBLOCK id=...== markers generated by this tool.");
       return;
     }
 
@@ -1993,52 +2066,46 @@ ${questionsLatex}
 
   // Drag-and-drop reorder
   new Sortable(el("qList"), {
-    handle: ".handle",
-    animation: 150,
-    onEnd: (evt) => {
-      if (evt.oldIndex === evt.newIndex) return;
+  draggable: ".qcard, .qgroup",
+  handle: ".handle",
+  animation: 150,
 
-      const movedItem = state.questions[evt.oldIndex];
-      if (!movedItem) return;
+  onEnd: () => {
+    // Rebuild state.questions based on the DOM order after drag.
+    const list = el("qList");
 
-      // If not grouped, normal move
-      if (!movedItem.groupId) {
-        const moved = state.questions.splice(evt.oldIndex, 1)[0];
-        state.questions.splice(evt.newIndex, 0, moved);
-        renderList();
-        loadEditor(state.selectedId);
+    const byId = new Map(state.questions.map(q => [q.id, q]));
+    const rebuilt = [];
+
+    [...list.children].forEach(node => {
+      if (node.classList.contains("qcard")) {
+        const id = node.dataset.id;
+        const q = byId.get(id);
+        if (q) rebuilt.push(q);
         return;
       }
 
-      // If grouped, move the entire contiguous group block
-      const gid = movedItem.groupId;
+      if (node.classList.contains("qgroup")) {
+        const cards = node.querySelectorAll(".qcard");
+        cards.forEach(card => {
+          const id = card.dataset.id;
+          const q = byId.get(id);
+          if (q) rebuilt.push(q);
+        });
+      }
+    });
 
-      // Determine the group's contiguous start/end around oldIndex
-      let start = evt.oldIndex;
-      while (start > 0 && state.questions[start - 1].groupId === gid) start--;
-
-      let end = evt.oldIndex;
-      while (end < state.questions.length - 1 && state.questions[end + 1].groupId === gid) end++;
-
-      const block = state.questions.splice(start, end - start + 1);
-
-      // Compute insertion index after removal
-      let insertAt = evt.newIndex;
-
-      // If the block was removed from above the insertion point, adjust
-      if (insertAt > start) insertAt -= block.length;
-
-      // Clamp insertion point
-      if (insertAt < 0) insertAt = 0;
-      if (insertAt > state.questions.length) insertAt = state.questions.length;
-
-      state.questions.splice(insertAt, 0, ...block);
-
-      renderList();
-      loadEditor(state.selectedId);
+    // Only commit if we rebuilt the full list
+    if (rebuilt.length === state.questions.length) {
+      state.questions = rebuilt;
     }
 
-  });
+    renderList();
+    loadEditor(state.selectedId);
+    refreshAfterReorder();
+  }
+});
+
 
 loadFromCache();
 renderList();
