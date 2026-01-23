@@ -71,6 +71,7 @@
             <button class="btn-add" id="btnAddInfo">Add Info</button>
             <button class="btn-shuffle" id="btnShuffleSelected">Shuffle Selected</button>
             <button class="btn-shuffle" id="btnShuffleAll">Shuffle All</button>
+            <button class="btn-shuffle" id="btnShuffleWithinGroups">Shuffle Within Groups</button>
             <button class="btn-group" id="btnGroupSelected">Group Selected</button>
             <button class="btn-group" id="btnUngroupSelected">Ungroup Selected</button>
             <button id="btnClearSaved">Clear Saved</button>
@@ -716,7 +717,7 @@ function showBuilder() {
   state.questions = units.flatMap(u => u.items);
 
   // Optional: clear selection after shuffle
-  state.questions.forEach(q => { q.selected = false; });
+  state.questions = units.flatMap(u => u.items);
 
   renderList();
   loadEditor(state.selectedId);
@@ -770,6 +771,41 @@ function forceDifferentShuffleUnits(units) {
   if (latestSnapshotId && latestSnapshotId()) renderShuffleMap(latestSnapshotId());
 }
 
+function shuffleWithinGroups({ onlySelectedGroups = false } = {}) {
+  // Break list into units (ungrouped singletons or contiguous group blocks)
+  const units = getGroupUnits(state.questions);
+
+  // Shuffle items within each grouped unit
+  units.forEach(u => {
+    const isGrouped = u.items.length > 1 && u.items[0].groupId;
+
+    if (!isGrouped) return;
+
+    if (onlySelectedGroups) {
+      const selectedInUnit = u.items.some(q => q.selected);
+      if (!selectedInUnit) return;
+    }
+
+    // Shuffle IN PLACE inside the unit
+    // Optional: ensure it changes when possible
+    if (u.items.length === 2) {
+      [u.items[0], u.items[1]] = [u.items[1], u.items[0]];
+    } else if (u.items.length > 2) {
+      const originalSig = u.items.map(x => x.id).join("|");
+      for (let attempt = 0; attempt < 12; attempt++) {
+        shuffleArrayInPlace(u.items);
+        const newSig = u.items.map(x => x.id).join("|");
+        if (newSig !== originalSig) break;
+      }
+    }
+  });
+
+  state.questions = units.flatMap(u => u.items);
+
+  // Keep selections (do not clear)
+  renderList();
+  loadEditor(state.selectedId);
+}
 
 
 function getGroupUnits(list) {
@@ -1861,6 +1897,7 @@ ${questionsLatex}
   el("btnCopy").addEventListener("click", copyLatex);
   el("btnGroupSelected").addEventListener("click", groupSelected);
   el("btnUngroupSelected").addEventListener("click", ungroupSelected);
+  el("btnShuffleWithinGroups").addEventListener("click", () => shuffleWithinGroups());
 
   el("btnAddInfo").addEventListener("click", () => createQuestion("info"));
 
