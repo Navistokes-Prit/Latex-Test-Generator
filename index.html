@@ -1277,7 +1277,7 @@ function latexBlockHeader(q) {
   // sentinel comment for robust importing + needspace for page-breaking control
   return [
     `%==QBLOCK id=${q.id}==`,
-    `\\Needspace{8\\baselineskip}`
+    `\\Needspace{12\\baselineskip}`
   ].join("\n");
 }
 
