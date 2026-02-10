@@ -277,53 +277,53 @@
 
 
 <!-- Graph Builder Modal -->
-<div id="graphModal" class="tb-modal">
+<div id="graphModal" class="tb-modal" style="display:none;">
   <div class="tb-modal-card" style="max-width:860px;">
     <div class="tb-modal-hd">
-      <div style="font-weight:600;">Graph Builder (Function Plot)</div>
+      <div style="font-weight:600;">Graph Builder (TikZ)</div>
       <button type="button" id="btnCloseGraphModal">Close</button>
     </div>
 
-    
-
-
-
     <div class="tb-modal-bd">
       <div class="grid2">
-
-        <div class="field" style="max-width:90px;">
+        <div class="field" style="max-width:110px;">
           <label>Scale</label>
-          <input
-            type="number"
-            id="gScale"
-            value="1"
-            step="0.1"
-            min="0.1"
-            style="text-align:center;"
-          >
+          <input type="number" id="gScale" value="0.45" step="0.05" min="0.05" style="text-align:center;">
+        </div>
+
+        <div class="field" style="max-width:130px;">
+          <label>Grid size (a)</label>
+          <input type="number" id="gA" value="7" step="1" min="1" style="text-align:center;">
+          <div class="small muted">Grid/axes span from -a to a.</div>
+        </div>
+
+        <div class="field" style="max-width:130px;">
+          <label>Axis padding</label>
+          <input type="number" id="gPad" value="0.5" step="0.1" min="0" style="text-align:center;">
         </div>
 
         <div class="field">
-          <label>x min</label>
-          <input type="number" id="gXMin" value="-5" step="0.5">
-        </div>
-        <div class="field">
-          <label>x max</label>
-          <input type="number" id="gXMax" value="5" step="0.5">
+          <label>Plot domain min</label>
+          <input type="number" id="gDomMin" value="-2.6" step="0.1">
         </div>
 
         <div class="field">
-          <label>y min</label>
-          <input type="number" id="gYMin" value="-5" step="0.5">
-        </div>
-        <div class="field">
-          <label>y max</label>
-          <input type="number" id="gYMax" value="5" step="0.5">
+          <label>Plot domain max</label>
+          <input type="number" id="gDomMax" value="2.6" step="0.1">
         </div>
 
         <div class="field">
-          <label>Grid step (tick distance)</label>
-          <input type="number" id="gStep" value="1" step="0.5" min="0.1">
+          <label>Samples</label>
+          <input type="number" id="gSamples" value="200" step="10" min="20">
+        </div>
+
+        <div class="field">
+          <label>Curve style</label>
+          <select id="gCurveStyle">
+            <option value="thin" selected>thin</option>
+            <option value="thick">thick</option>
+            <option value="very thick">very thick</option>
+          </select>
         </div>
 
         <div class="field">
@@ -340,10 +340,25 @@
       </div>
 
       <div class="field">
-        <label>Function (pgfplots expression)</label>
-        <input type="text" id="gFunc" value="x^2" placeholder="e.g., x^2 - 3*x + 2 or sin(deg(x))">
+        <label>Function f(x)</label>
+        <input type="text" id="gFunc" value="x^2" placeholder="e.g., (x+1)^2 or 2(x-2)^2-3">
         <div class="small muted">
-          Use pgfplots expressions. Examples: <code>x^2</code>, <code>sin(deg(x))</code>, <code>exp(x)</code>.
+          Use <code>x</code> as the variable. Squared terms like <code>(x+1)^2</code> are auto-expanded.
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="field">
+        <div class="btnrow" style="justify-content:space-between; align-items:center;">
+          <label style="margin:0;">Points</label>
+          <button type="button" id="btnAddGraphPoint">Add point</button>
+        </div>
+
+        <div id="graphPointsHost" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+
+        <div class="small muted" style="margin-top:8px;">
+          Add points as (x,y) with optional label and label position.
         </div>
       </div>
 
@@ -353,6 +368,7 @@
     </div>
   </div>
 </div>
+
 
 
 
@@ -1308,93 +1324,145 @@ function insertTableLatex() {
   loadEditor(q.id);
 }
 
-  // ----------------------
-// Graph Builder (Function Plot)
 // ----------------------
+// Graph Builder (TikZ grid + plot + points)
+// ----------------------
+
+const graphBuilder = {
+  points: []
+};
+
 function openGraphModal() {
   el("graphModal").style.display = "block";
+  if (!graphBuilder.points.length) {
+    graphBuilder.points = [
+      { x: "1", y: "1", label: "A", pos: "above right" }
+    ];
+  }
+  renderGraphPoints();
 }
 
 function closeGraphModal() {
   el("graphModal").style.display = "none";
 }
 
-function buildGraphLatex() {
-  const xmin = Number(el("gXMin").value);
-  const xmax = Number(el("gXMax").value);
-  const ymin = Number(el("gYMin").value);
-  const ymax = Number(el("gYMax").value);
-  const step = Number(el("gStep").value);
-  const func = (el("gFunc").value || "").trim();
+function renderGraphPoints() {
+  const host = el("graphPointsHost");
+  if (!host) return;
 
-  // NEW: scale
-  const scaleRaw = (el("gScale")?.value ?? "1").toString().trim();
-  const scale = Number(scaleRaw);
+  host.innerHTML = "";
 
-  if (!Number.isFinite(xmin) || !Number.isFinite(xmax) ||
-      !Number.isFinite(ymin) || !Number.isFinite(ymax) ||
-      !Number.isFinite(step)) {
-    alert("Please enter valid numeric bounds and step.");
-    return "";
-  }
+  graphBuilder.points.forEach((p, i) => {
+    const row = document.createElement("div");
+    row.style.display = "grid";
+    row.style.gridTemplateColumns = "80px 80px 1fr 140px 32px";
+    row.style.gap = "6px";
 
-  if (!func) {
-    alert("Please enter a function.");
-    return "";
-  }
+    const x = document.createElement("input");
+    x.value = p.x;
+    x.placeholder = "x";
+    x.oninput = e => p.x = e.target.value;
 
-  if (!Number.isFinite(scale) || scale <= 0) {
-    alert("Please enter a valid scale (e.g., 1, 0.8, 1.2).");
-    return "";
-  }
+    const y = document.createElement("input");
+    y.value = p.y;
+    y.placeholder = "y";
+    y.oninput = e => p.y = e.target.value;
 
-  // NOTE: now 7 args, last one is scale
-  return `\\drawfunction{${xmin}}{${xmax}}{${ymin}}{${ymax}}{${step}}{${escapeLatexUnsafe(func)}}{${scale}}`;
+    const lbl = document.createElement("input");
+    lbl.value = p.label;
+    lbl.placeholder = "Label";
+    lbl.oninput = e => p.label = e.target.value;
+
+    const pos = document.createElement("select");
+    ["above","below","left","right","above right","below right","above left","below left"]
+      .forEach(v => {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        pos.appendChild(o);
+      });
+    pos.value = p.pos;
+    pos.onchange = e => p.pos = e.target.value;
+
+    const del = document.createElement("button");
+    del.textContent = "✕";
+    del.onclick = () => {
+      graphBuilder.points.splice(i, 1);
+      renderGraphPoints();
+    };
+
+    row.append(x, y, lbl, pos, del);
+    host.appendChild(row);
+  });
 }
 
+function tikzifyExpression(expr) {
+  let s = expr.trim();
+
+  s = s.replace(/(\d)\(/g, "$1*(");
+  s = s.replace(/\(([^)]+)\)\^2/g, "($1)*($1)");
+  s = s.replace(/\bx\^2\b/g, "(\\x)*(\\x)");
+  s = s.replace(/\bx\b/g, "\\x");
+
+  return s;
+}
+
+function buildGraphTikzLatex() {
+  const scale = Number(el("gScale").value);
+  const a = Number(el("gA").value);
+  const pad = Number(el("gPad").value);
+  const dmin = Number(el("gDomMin").value);
+  const dmax = Number(el("gDomMax").value);
+  const samples = Number(el("gSamples").value);
+  const style = el("gCurveStyle").value;
+  const expr = tikzifyExpression(el("gFunc").value);
+
+  const lines = [
+    `\\begin{tikzpicture}[scale=${scale}]`,
+    `\\def\\a{${a}}`,
+    `\\def\\pad{${pad}}`,
+    ``,
+    `\\draw[step=1] (-\\a,-\\a) grid (\\a,\\a);`,
+    `\\draw[<->, thick] (-\\a-\\pad,0)--(\\a+\\pad,0);`,
+    `\\draw[<->, thick] (0,-\\a-\\pad)--(0,\\a+\\pad);`,
+    ``,
+    `\\draw[${style}, domain=${dmin}:${dmax}, samples=${samples}, smooth]`,
+    `  plot (\\x,{${expr}});`,
+    ``
+  ];
+
+  graphBuilder.points.forEach(p => {
+    if (!p.x || !p.y) return;
+    lines.push(`\\filldraw (${p.x},${p.y}) circle (3pt);`);
+    if (p.label) {
+      lines.push(`\\node[${p.pos}] at (${p.x},${p.y}) {$${p.label}$};`);
+    }
+  });
+
+  lines.push(`\\end{tikzpicture}`);
+  return lines.join("\n");
+}
 
 function insertGraphLatex() {
   const q = state.questions.find(x => x.id === state.selectedId);
   if (!q) return;
 
+  const latex = buildGraphTikzLatex();
   const target = el("graphInsertTarget").value;
-  const latex = buildGraphLatex();
-  if (!latex) return;
 
-  // Insert into PROMPT (works for MC, Numeric, Written, Info)
   if (target === "prompt") {
-    const ta = el("qPrompt");
-    const start = ta.selectionStart ?? ta.value.length;
-    const end = ta.selectionEnd ?? ta.value.length;
-
-    ta.value =
-      ta.value.slice(0, start) +
-      "\n" + latex + "\n" +
-      ta.value.slice(end);
-
-    q.prompt = ta.value;
-
-    closeGraphModal();
-    loadEditor(q.id);
-    return;
+    el("qPrompt").value += "\n" + latex + "\n";
+    q.prompt = el("qPrompt").value;
+  } else {
+    const idx = Number(target.replace("choice",""));
+    clamp4Choices(q);
+    q.choices[idx].text += "\n" + latex;
   }
-
-  // Insert into MC choice ONLY
-  if (q.type !== "multiple_choice") {
-    alert("Choice targets only work for Multiple Choice questions.");
-    return;
-  }
-
-  clamp4Choices(q);
-
-  const idx = Number(target.replace("choice", ""));
-  if (Number.isNaN(idx) || idx < 0 || idx > 3) return;
-
-  q.choices[idx].text = (q.choices[idx].text || "") + "\n" + latex;
 
   closeGraphModal();
   loadEditor(q.id);
 }
+
 
 
  function latexQuestionBlock(q) {
@@ -1561,6 +1629,153 @@ function extractChoices(block) {
 
   return { choices, correctIndex };
 }
+
+function getQuestionsRegion(latex) {
+  const src = (latex || "").replace(/\r/g, "");
+  const m = src.match(/\\begin\{questions\}([\s\S]*?)\\end\{questions\}/);
+  return m ? m[1] : src; // fallback: parse whole doc if no questions env
+}
+
+function stripLeadingCommentsAndSpace(s) {
+  return (s || "")
+    .replace(/^\s*%.*$/gm, "")
+    .replace(/^\s+/, "");
+}
+
+function inferMcColumnsFromChoicesEnv(block) {
+  // Detect \begin{multicols}{2} or {4} wrapping choices
+  const m = block.match(/\\begin\{multicols\}\{(\d+)\}/);
+  const n = m ? Number(m[1]) : 1;
+  return (n === 2 || n === 4) ? n : 1;
+}
+
+function extractPromptMultiLine(block) {
+  // Extract everything after \question[...] up to \begin{choices} or \numbox or end of block.
+  // Keeps LaTeX (tables, graphs, etc.) in the prompt.
+  const qMatch = block.match(/\\question(?:\s*\[[^\]]*\])?\s*/);
+  if (!qMatch) return "";
+
+  let rest = block.slice(qMatch.index + qMatch[0].length);
+
+  // stop before choices/numbox
+  const stopIdxs = [];
+  const idxChoices = rest.search(/\\begin\{choices\}/);
+  if (idxChoices >= 0) stopIdxs.push(idxChoices);
+
+  const idxNum = rest.search(/\\numbox\b/);
+  if (idxNum >= 0) stopIdxs.push(idxNum);
+
+  const cut = stopIdxs.length ? Math.min(...stopIdxs) : rest.length;
+  rest = rest.slice(0, cut);
+
+  // Remove includegraphics blocks if you want them tracked separately (you already do)
+  // We'll leave other LaTeX intact.
+  rest = rest
+    .replace(/\\begin\{center\}[\s\S]*?\\includegraphics[\s\S]*?\\end\{center\}\s*/g, "")
+    .trim();
+
+  // If prompt starts with a newline, trim it
+  return stripLatexNoise(rest);
+}
+
+function parseQuestionsByQuestionCommand(latex) {
+  const region = getQuestionsRegion(latex);
+  const src = stripLeadingCommentsAndSpace(region);
+
+  // Find every \question occurrence and split into blocks
+  const re = /\\question(?:\s*\[[^\]]*\])?/g;
+  const starts = [];
+  let m;
+  while ((m = re.exec(src)) !== null) starts.push(m.index);
+
+  if (!starts.length) return [];
+
+  const blocks = [];
+  for (let i = 0; i < starts.length; i++) {
+    const a = starts[i];
+    const b = (i + 1 < starts.length) ? starts[i + 1] : src.length;
+    blocks.push(src.slice(a, b).trim());
+  }
+
+  const questions = [];
+
+  for (const block of blocks) {
+    // classify
+    // classify (STRICTER): only inspect content *after* \question
+    const afterQuestion = block.replace(/^\\question(?:\s*\[[^\]]*\])?\s*/m, "");
+
+    // MC: rely on choices environment (most reliable)
+    const hasChoicesEnv = /\\begin\{choices\}/.test(afterQuestion);
+
+    // Numeric: look for \numbox as a standalone command line (or at least as a command)
+    const hasNumBox = /(^|[\s\}])\\numbox\b/m.test(afterQuestion);
+
+    // Final classification
+    const isMC = hasChoicesEnv;
+    const isNumeric = !isMC && hasNumBox; // MC wins if both appear
+
+
+    const q = {
+      id: uid("q"), // no QBLOCK id available; generate fresh
+      type: "written",
+      points: "",
+      prompt: "",
+      images: [],
+      shuffleSelected: true,
+      choices: null,
+      correctChoiceId: null,
+      numericAnswer: "",
+      infoImageScale: "0.75",
+      selected: false,
+      groupId: null,
+      mcColumns: 1,
+    };
+
+    // images (your existing extractor)
+    q.images = extractAllIncludeGraphics(block);
+
+    // points (your existing extractor)
+    q.points = extractPoints(block);
+
+    if (isMC) {
+      q.type = "multiple_choice";
+      q.prompt = extractPromptMultiLine(block);
+
+      const { choices, correctIndex } = extractChoices(block);
+      q.choices = choices.map(text => ({ id: uid("c"), text }));
+      q.correctChoiceId = q.choices[Math.max(0, Math.min(3, correctIndex))].id;
+
+      q.mcColumns = inferMcColumnsFromChoicesEnv(block);
+
+    } else if (isNumeric) {
+      q.type = "numeric";
+      q.prompt = extractPromptMultiLine(block);
+      q.numericAnswer = extractNumericAnswer(block);
+
+    } else {
+      q.type = "written";
+      q.prompt = extractPromptMultiLine(block);
+    }
+
+    questions.push(q);
+  }
+
+  return questions;
+}
+
+function parseQuestionsSmart(latex) {
+  const src = (latex || "").replace(/\r/g, "");
+
+  // If it looks like your tool output (QBLOCK markers), keep your robust path.
+  if (/^\s*%==QBLOCK\b/m.test(src)) {
+    return parseQuestionsFromLatex(src); // your existing function
+  }
+
+  // Otherwise, fallback to parsing by \question
+  return parseQuestionsByQuestionCommand(src);
+}
+
+
 
 function extractNumericAnswer(block) {
   // looks for \textbf{Answer:} ... inside \ifprintanswers ... \fi
@@ -2021,6 +2236,10 @@ ${questionsLatex}
   el("btnOpenGraphBuilder").addEventListener("click", openGraphModal);
   el("btnCloseGraphModal").addEventListener("click", closeGraphModal);
   el("btnInsertGraphLatex").addEventListener("click", insertGraphLatex);
+  el("btnAddGraphPoint").addEventListener("click", () => {
+  graphBuilder.points.push({ x: "", y: "", label: "", pos: "above right" });
+  renderGraphPoints();
+});
 
 
     // HOME / IMPORT wiring
@@ -2044,13 +2263,13 @@ ${questionsLatex}
   });
 
   el("btnDoImport").addEventListener("click", () => {
-    const latex = el("importLatex").value || "";
-    const parsed = parseQuestionsFromLatex(latex);
+  const latex = el("importLatex").value || "";
+  const parsed = parseQuestionsSmart(latex);
 
-    if (!parsed.length) {
-      alert("No questions found. Ensure the pasted LaTeX includes %==QBLOCK id=...== markers generated by this tool.");
-      return;
-    }
+  if (!parsed.length) {
+    alert("No questions found. Paste either:\n(1) LaTeX generated by this tool (with %==QBLOCK markers), or\n(2) Any LaTeX that uses \\question for each question.");
+    return;
+  }
 
   state.questions = parsed;
   state.selectedId = parsed[0].id;
@@ -2059,12 +2278,12 @@ ${questionsLatex}
   loadEditor(state.selectedId);
   saveToCache();
 
-  // clear import UI
   el("importLatex").value = "";
   el("importArea").style.display = "none";
 
   showBuilder();
 });
+
 
   // Drag-and-drop reorder
   new Sortable(el("qList"), {
