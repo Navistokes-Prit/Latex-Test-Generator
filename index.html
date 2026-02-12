@@ -108,31 +108,42 @@
   <div class="grid2">
     <!-- LEFT COLUMN: Test settings + Question editor -->
     <div>
-      <div class="field">
-        <label>Test name (Title page)</label>
-        <input type="text" id="testName" placeholder="e.g., Unit 3 Test" />
+            <!-- NEW: compact meta bar + collapsible meta drawer -->
+      <div class="metaBar" style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        <button id="btnMetaToggle" class="ghost" type="button">Document Info ▾</button>
+        <div id="metaSummary" class="small muted"></div>
       </div>
 
-      <div class="field">
-        <label>Grade and Subject</label>
-        <input type="text" id="gradeSubject" placeholder="e.g., Grade 10 Science" />
-      </div>
+      <div id="metaDrawer" class="panel" style="display:none; box-shadow:none; margin-bottom:12px;">
+        <div class="bd">
+          <div class="field">
+            <label>Test name (Title page)</label>
+            <input type="text" id="testName" placeholder="e.g., Unit 3 Test" />
+          </div>
 
-      <div class="field">
-        <label>Header image filename (in Overleaf images/ folder)</label>
-        <input type="text" id="headerImage" value="Stem Header.png" />
-        <div class="small">
-          Overleaf: put the image inside <code>images/</code>. Your LaTeX already has
-          <code>\graphicspath{ {./images/} }</code>.
+          <div class="field">
+            <label>Grade and Subject</label>
+            <input type="text" id="gradeSubject" placeholder="e.g., Grade 10 Science" />
+          </div>
+
+          <div class="field">
+            <label>Header image filename (in Overleaf images/ folder)</label>
+            <input type="text" id="headerImage" value="Stem Header.png" />
+            <div class="small">
+              Overleaf: put the image inside <code>images/</code>. Your LaTeX already has
+              <code>\graphicspath{ {./images/} }</code>.
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Instructions (one per line)</label>
+            <textarea id="instructions" placeholder="No calculators&#10;Show all work"></textarea>
+          </div>
         </div>
       </div>
 
-      <div class="field">
-        <label>Instructions (one per line)</label>
-        <textarea id="instructions" placeholder="No calculators&#10;Show all work"></textarea>
-      </div>
-
       <div class="hr"></div>
+
 
       <!-- Question editor -->
       <div class="field">
@@ -243,6 +254,64 @@
 
 </div> <!-- end #builderScreen -->
 
+  <!-- NEW: DOC TYPE SCREEN -->
+  <div id="docTypeScreen" class="panel" style="max-width:1000px; margin:20px auto; display:none;">
+    <div class="hd">
+      <div class="title">New Document</div>
+    </div>
+
+    <div class="bd">
+      <div class="small muted" style="margin-bottom:10px;">
+        Choose what you’re building. (Quiz uses only a name; Test uses full title page details.)
+      </div>
+
+      <div class="btnrow" style="gap:12px; margin-bottom:12px;">
+        <button class="ok" id="btnChooseTest">Test</button>
+        <button id="btnChooseQuiz">Quiz</button>
+      </div>
+
+      <button class="ghost" id="btnDocTypeBack">Back</button>
+    </div>
+  </div>
+
+  <!-- NEW: DOC SETUP SCREEN -->
+  <div id="docSetupScreen" class="panel" style="max-width:1000px; margin:20px auto; display:none;">
+    <div class="hd">
+      <div class="title">Document Setup</div>
+    </div>
+
+    <div class="bd">
+      <div class="field">
+        <label>Test / Quiz Name</label>
+        <input id="metaName" type="text" placeholder="e.g., Unit 3 Quiz" />
+      </div>
+
+      <div class="field metaTestOnly">
+        <label>Grade and Subject</label>
+        <input id="metaGradeSubject" type="text" placeholder="e.g., Grade 10 Science" />
+      </div>
+
+      <div class="field metaTestOnly">
+        <label>Header image filename (in Overleaf images/ folder)</label>
+        <input id="metaHeaderImage" type="text" value="Stem Header.png" />
+        <div class="small">
+          Overleaf: put the image inside <code>images/</code>. Your LaTeX already has
+          <code>\graphicspath{ {./images/} }</code>.
+        </div>
+      </div>
+
+      <div class="field metaTestOnly">
+        <label>Instructions (one per line)</label>
+        <textarea id="metaInstructions" placeholder="No calculators&#10;Show all work"></textarea>
+      </div>
+
+      <div class="btnrow" style="gap:12px; margin-top:12px;">
+        <button class="ok" id="btnSetupOk">OK</button>
+        <button class="ghost" id="btnSetupBack">Back</button>
+      </div>
+    </div>
+  </div>
+
 <!-- Table Builder Modal -->
 <div id="tableModal" class="tb-modal">
   <div class="tb-modal-card">
@@ -302,28 +371,35 @@
           <button type="button" class="gbtn" id="btnToolPoint">Point</button>
           <button type="button" class="gbtn" id="btnToolLine">Line</button>
           <button type="button" class="gbtn" id="btnToggleGrid">Grid</button>
+          <button type="button" class="gbtn" id="btnToggleAxes">Axes</button>
+
         </div>
 
 
-          <div class="graph-ctrl">
+                    <div class="graph-ctrl">
             <div class="small muted" style="margin-bottom:6px;">Grid size (a)</div>
+
             <div class="graph-arrows">
               <button type="button" class="gbtn" id="gUp">▲</button>
-              <div class="graph-arrows-mid">
-                <button type="button" class="gbtn" id="gLeft">◀</button>
-                <button type="button" class="gbtn" id="gDown">▼</button>
-                <button type="button" class="gbtn" id="gRight">▶</button>
-              </div>
+
+              <button type="button" class="gbtn" id="gLeft">◀</button>
+              <div class="gpad-center" aria-hidden="true"></div>
+              <button type="button" class="gbtn" id="gRight">▶</button>
+
+              <button type="button" class="gbtn" id="gDown">▼</button>
+
               <div class="graph-arrows-row">
                 <button type="button" class="gbtn" id="gMinus">–</button>
                 <div class="greadout" id="gAReadout">a = 7</div>
                 <button type="button" class="gbtn" id="gPlus">+</button>
               </div>
             </div>
+
             <div class="small muted" style="margin-top:6px;">
               +/– changes grid size. Arrows pan view (optional; you can ignore pan if you want).
             </div>
           </div>
+
 
           <div class="graph-ctrl">
             <div class="small muted" style="margin-bottom:6px;">Insert into</div>
@@ -476,15 +552,80 @@
 
   const el = (id) => document.getElementById(id);
 
-  function showHome() {
-  el("homeScreen").style.display = "block";
+
+// ----------------------
+// NEW: Doc meta + setup wizard
+// ----------------------
+const docMeta = {
+  type: "test" // "test" | "quiz"
+};
+
+function setSetupVisibility() {
+  const isTest = docMeta.type === "test";
+  document.querySelectorAll(".metaTestOnly").forEach(node => {
+    node.style.display = isTest ? "" : "none";
+  });
+}
+
+function updateMetaSummary() {
+  const mode = el("docMode")?.value || "test";
+  const name = (el("testName")?.value || "").trim();
+  const gs = (el("gradeSubject")?.value || "").trim();
+
+  let bits = [];
+  if (name) bits.push(name);
+  if (mode === "test" && gs) bits.push(gs);
+
+  if (el("metaSummary")) el("metaSummary").textContent = bits.join(" • ");
+}
+
+function wireMetaDrawer() {
+  const btn = el("btnMetaToggle");
+  const drawer = el("metaDrawer");
+  if (!btn || !drawer) return;
+
+  btn.addEventListener("click", () => {
+    const open = drawer.style.display !== "none";
+    drawer.style.display = open ? "none" : "block";
+    btn.textContent = open ? "Document Info ▾" : "Document Info ▴";
+  });
+
+  // keep summary fresh
+  ["testName", "gradeSubject", "headerImage", "instructions", "docMode"].forEach(id => {
+    const n = el(id);
+    if (!n) return;
+    n.addEventListener("input", updateMetaSummary);
+    n.addEventListener("change", updateMetaSummary);
+  });
+}
+
+  function hideAllScreens() {
+  el("homeScreen").style.display = "none";
+  el("docTypeScreen").style.display = "none";
+  el("docSetupScreen").style.display = "none";
   el("builderScreen").style.display = "none";
 }
 
+function showHome() {
+  hideAllScreens();
+  el("homeScreen").style.display = "block";
+}
+
+function showDocType() {
+  hideAllScreens();
+  el("docTypeScreen").style.display = "block";
+}
+
+function showDocSetup() {
+  hideAllScreens();
+  el("docSetupScreen").style.display = "block";
+}
+
 function showBuilder() {
-  el("homeScreen").style.display = "none";
+  hideAllScreens();
   el("builderScreen").style.display = "block";
 }
+
 
 
   function uid(prefix="q") {
@@ -1442,9 +1583,8 @@ const graphBuilder = {
   tool: { mode: "point", lineStart: null },  // point/line tool state
 
   // multi-plot functions
-  plots: [
-    { id: uid("plot"), expr: "x^2", style: "thin" }
-  ],
+  plots: [],
+
 
   // points
   points: [], // { id, x, y, label, pos }
@@ -1859,10 +1999,12 @@ function renderLinesUI() {
     del.type = "button";
     del.textContent = "Delete";
     del.className = "danger";
-    del.onclick = (e) => {
-      e.stopPropagation();
-      deleteLineById(L.id);
-    };
+    del.onclick = () => {
+    graphBuilder.plots = graphBuilder.plots.filter(x => x.id !== pl.id);
+    renderPlotsUI();
+    drawGraphSvg();
+  };
+
 
     row.onclick = () => {
       graphBuilder.selectedPointId = null;
@@ -1938,6 +2080,11 @@ function renderPointsUI() {
 function renderPlotsUI() {
   const host = el("plotsHost");
   host.innerHTML = "";
+
+  if (!graphBuilder.plots || graphBuilder.plots.length === 0) {
+  host.innerHTML = `<div class="small muted">No functions/plots added.</div>`;
+  return;
+}
 
   graphBuilder.plots.forEach((pl, idx) => {
     const card = document.createElement("div");
@@ -2078,10 +2225,12 @@ function wireGraphUI() {
   });
 
   // add plot
-  el("btnAddPlot").addEventListener("click", () => {
-    graphBuilder.plots.push({ id: uid("plot"), expr: "x^2", style: "thin" });
-    renderPlotsUI();
-  });
+ el("btnAddPlot").addEventListener("click", () => {
+  graphBuilder.plots.push({ id: uid("plot"), expr: "x^2", style: "thin" });
+  renderPlotsUI();
+  drawGraphSvg();
+});
+
 
   // clear points
   el("btnClearPoints").addEventListener("click", () => {
@@ -2147,6 +2296,7 @@ function wireGraphUI() {
 }
   
 wireGraphUI();
+wireMetaDrawer();
 
 
  function latexQuestionBlock(q) {
@@ -2948,19 +3098,26 @@ el("btnToggleGrid").addEventListener("click", () => {
   drawGraphSvg();
 });
 
+el("btnToggleAxes").addEventListener("click", () => {
+  graphBuilder.showAxes = !graphBuilder.showAxes;
+  drawGraphSvg();
+});
 
 
 
     // HOME / IMPORT wiring
   el("btnGoNew").addEventListener("click", () => {
-    // Start fresh
-    state.questions = [];
-    state.selectedId = null;
-    saveToCache();
-    renderList();
-    loadEditor(null);
-    showBuilder();
-  });
+  // Start fresh questions
+  state.questions = [];
+  state.selectedId = null;
+  saveToCache();
+  renderList();
+  loadEditor(null);
+
+  // Go to wizard
+  showDocType();
+});
+
 
   el("btnGoImport").addEventListener("click", () => {
     el("importArea").style.display = "block";
@@ -2993,6 +3150,43 @@ el("btnToggleGrid").addEventListener("click", () => {
   showBuilder();
 });
 
+// ----------------------
+// NEW: Wizard button wiring
+// ----------------------
+el("btnDocTypeBack").addEventListener("click", () => showHome());
+
+el("btnChooseTest").addEventListener("click", () => {
+  docMeta.type = "test";
+  setSetupVisibility();
+  showDocSetup();
+});
+
+el("btnChooseQuiz").addEventListener("click", () => {
+  docMeta.type = "quiz";
+  setSetupVisibility();
+  showDocSetup();
+});
+
+el("btnSetupBack").addEventListener("click", () => showDocType());
+
+el("btnSetupOk").addEventListener("click", () => {
+  // Push setup values into your existing builder fields
+  el("testName").value = el("metaName").value || "";
+  el("gradeSubject").value = el("metaGradeSubject").value || "";
+  el("headerImage").value = el("metaHeaderImage").value || "Stem Header.png";
+  el("instructions").value = el("metaInstructions").value || "";
+
+  // Set mode (this is what generateLatex() reads)
+  if (el("docMode")) el("docMode").value = docMeta.type;
+
+  // Start builder
+  showBuilder();
+  updateMetaSummary();
+
+  // Keep the meta drawer collapsed so questions start immediately
+  if (el("metaDrawer")) el("metaDrawer").style.display = "none";
+  if (el("btnMetaToggle")) el("btnMetaToggle").textContent = "Document Info ▾";
+});
 
   // Drag-and-drop reorder
   new Sortable(el("qList"), {
@@ -3049,10 +3243,12 @@ if (state.questions.length) {
     state.selectedId = state.questions[0].id;
     loadEditor(state.selectedId);
   }
+  updateMetaSummary();
 } else {
   // Fresh start
   showHome();
 }
+
 
 
 })();
