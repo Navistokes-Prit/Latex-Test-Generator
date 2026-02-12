@@ -56,181 +56,192 @@
     </header>
 
     <div class="app">
-      <!-- LEFT: Question list -->
-      <div class="panel">
-        <div class="hd">
-          <div class="title">Questions</div>
-          <div class="muted" id="qCount">0</div>
-        </div>
+  <!-- LEFT: Question list -->
+  <div class="panel" id="leftPanel">
+    <div class="hd">
+      <div class="title">Questions</div>
+      <div class="muted" id="qCount">0</div>
+    </div>
 
-        <div class="bd">
-          <div class="btnrow" style="margin-bottom:10px;">
-            <button class="btn-add" id="btnAddMC">Add MC</button>
-            <button class="btn-add" id="btnAddNum">Add Numeric</button>
-            <button class="btn-add" id="btnAddWritten">Add Written</button>
-            <button class="btn-add" id="btnAddInfo">Add Info</button>
-            <button class="btn-shuffle" id="btnShuffleSelected">Shuffle Selected</button>
-            <button class="btn-shuffle" id="btnShuffleAll">Shuffle All</button>
-            <button class="btn-shuffle" id="btnShuffleWithinGroups">Shuffle Within Groups</button>
-            <button class="btn-group" id="btnGroupSelected">Group Selected</button>
-            <button class="btn-group" id="btnUngroupSelected">Ungroup Selected</button>
-            <button id="btnClearSaved">Clear Saved</button>
-          </div>
-
-          <div class="small">Drag the handle on a question card to reorder.</div>
-          <div class="hr"></div>
-          <div class="qlist" id="qList"></div>
-        </div>
+    <div class="bd">
+      <div class="btnrow" style="margin-bottom:10px;">
+        <button class="btn-add" id="btnAddMC">Add MC</button>
+        <button class="btn-add" id="btnAddNum">Add Numeric</button>
+        <button class="btn-add" id="btnAddWritten">Add Written</button>
+        <button class="btn-add" id="btnAddInfo">Add Info</button>
+        <button class="btn-shuffle" id="btnShuffleSelected">Shuffle Selected</button>
+        <button class="btn-shuffle" id="btnShuffleAll">Shuffle All</button>
+        <button class="btn-shuffle" id="btnShuffleWithinGroups">Shuffle Within Groups</button>
+        <button class="btn-group" id="btnGroupSelected">Group Selected</button>
+        <button class="btn-group" id="btnUngroupSelected">Ungroup Selected</button>
+        <button id="btnClearSaved">Clear Saved</button>
       </div>
 
-      <!-- RIGHT: Editor + Output -->
-
-<div class="panel">
-  <div class="hd">
-    <div class="title">Editor & Output</div>
-
-    <div class="btnrow">
-      <label class="small muted" style="display:flex; align-items:center; gap:8px; margin-right:10px;">
-        Format:
-        <select id="docMode" style="width:auto; min-width:140px;">
-          <option value="test" selected>Test</option>
-          <option value="quiz">Quiz</option>
-        </select>
-      </label>
-
-      <button class="ok" id="btnGenerate">Generate LaTeX</button>
-      <button id="btnCopy">Copy LaTeX</button>
-      <button id="btnSaveKey">Save Key Snapshot</button>
-      <button id="btnShowShuffleMap">Show Shuffle Map</button>
+      <div class="small">Drag the handle on a question card to reorder.</div>
+      <div class="hr"></div>
+      <div class="qlist" id="qList"></div>
     </div>
   </div>
+
+  <!-- RIGHT: Editor + Output (single grid item; fixes layout push-down) -->
+  <div class="panel" id="rightPanel">
+    <div class="hd">
+      <div class="title">Editor & Output</div>
+
+      <div class="btnrow">
+        <label class="small muted" style="display:flex; align-items:center; gap:8px; margin-right:10px;">
+          Format:
+          <select id="docMode" style="width:auto; min-width:140px;">
+            <option value="test" selected>Test</option>
+            <option value="quiz">Quiz</option>
+          </select>
+        </label>
+
+        <button class="ok" id="btnGenerate">Generate LaTeX</button>
+        <button id="btnCopy">Copy LaTeX</button>
+        <button id="btnSaveKey">Save Key Snapshot</button>
+        <button id="btnShowShuffleMap">Show Shuffle Map</button>
+      </div>
+    </div>
 
   <div class="bd">
-    <div class="grid2">
-      <!-- Test settings -->
-        <div>
-          <div class="field">
-            <label>Test name (Title page)</label>
-            <input type="text" id="testName" placeholder="e.g., Unit 3 Test" />
-          </div>
-          <div class="field">
-            <label>Grade and Subject</label>
-            <input type="text" id="gradeSubject" placeholder="e.g., Grade 10 Science" />
-          </div>
-          <div class="field">
-            <label>Header image filename (in Overleaf images/ folder)</label>
-            <input type="text" id="headerImage" value="Stem Header.png" />
-            <div class="small">Overleaf: put the image inside <code>images/</code>. Your LaTeX already has <code>\graphicspath{ {./images/} }</code>.</div>
-          </div>
-          <div class="field">
-            <label>Instructions (one per line)</label>
-            <textarea id="instructions" placeholder="No calculators&#10;Show all work"></textarea>
-          </div>
-          <div class="hr"></div>
+  <div class="grid2">
+    <!-- LEFT COLUMN: Test settings + Question editor -->
+    <div>
+      <div class="field">
+        <label>Test name (Title page)</label>
+        <input type="text" id="testName" placeholder="e.g., Unit 3 Test" />
+      </div>
 
-          <!-- Question editor -->
+      <div class="field">
+        <label>Grade and Subject</label>
+        <input type="text" id="gradeSubject" placeholder="e.g., Grade 10 Science" />
+      </div>
+
+      <div class="field">
+        <label>Header image filename (in Overleaf images/ folder)</label>
+        <input type="text" id="headerImage" value="Stem Header.png" />
+        <div class="small">
+          Overleaf: put the image inside <code>images/</code>. Your LaTeX already has
+          <code>\graphicspath{ {./images/} }</code>.
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Instructions (one per line)</label>
+        <textarea id="instructions" placeholder="No calculators&#10;Show all work"></textarea>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- Question editor -->
+      <div class="field">
+        <label>Selected Question</label>
+        <div class="small" id="selectedInfo">No question selected. Click a question card on the left.</div>
+      </div>
+
+      <div id="editorArea" style="display:none;">
+        <div class="grid2">
           <div class="field">
-            <label>Selected Question</label>
-            <div class="small" id="selectedInfo">No question selected. Click a question card on the left.</div>
+            <label>Type</label>
+            <select id="qType">
+              <option value="multiple_choice">Multiple Choice</option>
+              <option value="numeric">Numeric Response</option>
+              <option value="written">Written Response</option>
+              <option value="info">Info Box</option>
+            </select>
           </div>
 
-          <div id="editorArea" style="display:none;">
-            <div class="grid2">
-              <div class="field">
-                <label>Type</label>
-                <select id="qType">
-                  <option value="multiple_choice">Multiple Choice</option>
-                  <option value="numeric">Numeric Response</option>
-                  <option value="written">Written Response</option>
-                  <option value="info">Info Box </option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Points (optional)</label>
-                <input type="number" id="qPoints" min="0" step="1" placeholder="e.g., 3" />
-              </div>
-            </div>
+          <div class="field">
+            <label>Points (optional)</label>
+            <input type="number" id="qPoints" min="0" step="1" placeholder="e.g., 3" />
+          </div>
+        </div>
 
+        <div class="field">
+          <label>Question prompt (LaTeX allowed)</label>
+          <textarea id="qPrompt" placeholder="Type the question here..."></textarea>
+        </div>
+
+        <div class="btnrow" style="margin-top:8px;">
+          <button type="button" id="btnOpenTableBuilder">Table Builder</button>
+          <button type="button" id="btnOpenGraphBuilder">Graph Builder</button>
+        </div>
+
+        <div class="field">
+          <label>Image filename(s) (optional, one per line; must exist in images/ folder)</label>
+          <textarea id="qImages" placeholder="diagram1.png&#10;photo2.jpg"></textarea>
+          <div class="small">
+            Each will be inserted as <code>\includegraphics{...}</code> above the question text.
+          </div>
+        </div>
+
+        <!-- Numeric-only fields -->
+        <div id="numericArea" style="display:none;">
+          <div class="grid2">
             <div class="field">
-              <label>Question prompt (LaTeX allowed)</label>
-              <textarea id="qPrompt" placeholder="Type the question here..."></textarea>
-            </div>
-
-            <div class="btnrow" style="margin-top:8px;">
-              <button type="button" id="btnOpenTableBuilder">Table Builder</button>
-              <button type="button" id="btnOpenGraphBuilder">Graph Builder</button>
-            </div>
-
-            <div class="field">
-              <label>Image filename(s) (optional, one per line; must exist in images/ folder)</label>
-              <textarea id="qImages" placeholder="diagram1.png&#10;photo2.jpg"></textarea>
-              <div class="small">Each will be inserted as <code>\includegraphics{...}</code> above the question text.</div>
-            </div>
-            
-            <!-- Numeric-only fields -->
-            <div id="numericArea" style="display:none;">
-              <div class="grid2">
-                <div class="field">
-                  <label>Numeric answer (shown only when you compile with \printanswers)</label>
-                  <input type="text" id="numAnswer" placeholder="e.g., 9.8 m/s^2" />
-                </div>
-              </div>
-            </div>
-
-
-
-            <div id="mcArea">
-              <div class="field">
-                <label style="display:block;">Multiple choice options (4) and correct answer</label>
-                <div class="choices" id="mcChoices" style="margin-top:10px;"></div>
-                <div class="small">Use this to create a matrix-style choice table and insert it into the prompt or a choice.</div>
-              </div>
-            </div>
-
-            <div class="field" id="mcColumnsField">
-              <label>Answer choice columns</label>
-              <select id="mcColumns">
-                <option value="1">1 column</option>
-                <option value="2">2 columns</option>
-                <option value="4">4 columns</option>
-              </select>
-            </div>
-
-
-            <div class="btnrow">
-              <button class="primary" id="btnSave">Apply Changes</button>
-              <button class="danger" id="btnDelete">Delete Question</button>
-              <button id="btnDuplicate">Duplicate</button>
+              <label>Numeric answer (shown only when you compile with \printanswers)</label>
+              <input type="text" id="numAnswer" placeholder="e.g., 9.8 m/s^2" />
             </div>
           </div>
         </div>
 
-        <!-- Output -->
-        <div class="outwrap">
+        <div id="mcArea">
           <div class="field">
-            <label>Generated LaTeX (.tex)</label>
-            <textarea id="latexOut" spellcheck="false" placeholder="Click “Generate LaTeX” to populate..."></textarea>
-          </div>
-
-          <div class="field">
-            <label>Mapping / Answer Key (for your reference)</label>
-            <div id="mappingOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
-              <div class="small muted">Generate LaTeX to refresh mappings.</div>
-            </div>
-            <div class="small">This mapping is not inserted into the student test; it is for teachers to verify shuffles/reorders.</div>
-          </div>
-
-          <div class="field">
-            <label>Shuffle Tracking (Saved Key → Current Order)</label>
-            <div id="shuffleMapOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
-              <div class="small muted">Save a key snapshot, then shuffle/reorder to see movements.</div>
+            <label style="display:block;">Multiple choice options (4) and correct answer</label>
+            <div class="choices" id="mcChoices" style="margin-top:10px;"></div>
+            <div class="small">
+              Use this to create a matrix-style choice table and insert it into the prompt or a choice.
             </div>
           </div>
+        </div>
+
+        <div class="field" id="mcColumnsField">
+          <label>Answer choice columns</label>
+          <select id="mcColumns">
+            <option value="1">1 column</option>
+            <option value="2">2 columns</option>
+            <option value="4">4 columns</option>
+          </select>
+        </div>
+
+        <div class="btnrow">
+          <button class="primary" id="btnSave">Apply Changes</button>
+          <button class="danger" id="btnDelete">Delete Question</button>
+          <button id="btnDuplicate">Duplicate</button>
         </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- RIGHT COLUMN: Output -->
+    <div class="outwrap">
+      <div class="field">
+        <label>Generated LaTeX (.tex)</label>
+        <textarea id="latexOut" spellcheck="false" placeholder="Click “Generate LaTeX” to populate..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Mapping / Answer Key (for your reference)</label>
+        <div id="mappingOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
+          <div class="small muted">Generate LaTeX to refresh mappings.</div>
+        </div>
+        <div class="small">This mapping is not inserted into the student test; it is for teachers to verify shuffles/reorders.</div>
+      </div>
+
+      <div class="field">
+        <label>Shuffle Tracking (Saved Key → Current Order)</label>
+        <div id="shuffleMapOut" class="panel" style="border-radius:10px; padding:10px; background: var(--panel2); border:1px solid var(--border);">
+          <div class="small muted">Save a key snapshot, then shuffle/reorder to see movements.</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end .grid2 -->
+</div><!-- end .bd -->
+  
+  </div><!-- end #rightPanel -->
+</div><!-- end .app -->
+
+</div> <!-- end #builderScreen -->
 
 <!-- Table Builder Modal -->
 <div id="tableModal" class="tb-modal">
@@ -278,96 +289,178 @@
 
 <!-- Graph Builder Modal -->
 <div id="graphModal" class="tb-modal" style="display:none;">
-  <div class="tb-modal-card" style="max-width:860px;">
+  <div class="tb-modal-card graph-card">
     <div class="tb-modal-hd">
-      <div style="font-weight:600;">Graph Builder (TikZ)</div>
+      <div style="font-weight:600;">Graph Builder (Interactive)</div>
       <button type="button" id="btnCloseGraphModal">Close</button>
     </div>
 
-    <div class="tb-modal-bd">
-      <div class="grid2">
-        <div class="field" style="max-width:110px;">
-          <label>Scale</label>
-          <input type="number" id="gScale" value="0.45" step="0.05" min="0.05" style="text-align:center;">
+    <div class="tb-modal-bd graph-bd">
+      <div class="graph-left">
+        <div class="graph-toolbar">
+          <div class="btnrow" style="margin-top:10px;">
+          <button type="button" class="gbtn" id="btnToolPoint">Point</button>
+          <button type="button" class="gbtn" id="btnToolLine">Line</button>
+          <button type="button" class="gbtn" id="btnToggleGrid">Grid</button>
         </div>
 
-        <div class="field" style="max-width:130px;">
-          <label>Grid size (a)</label>
-          <input type="number" id="gA" value="7" step="1" min="1" style="text-align:center;">
-          <div class="small muted">Grid/axes span from -a to a.</div>
+
+          <div class="graph-ctrl">
+            <div class="small muted" style="margin-bottom:6px;">Grid size (a)</div>
+            <div class="graph-arrows">
+              <button type="button" class="gbtn" id="gUp">▲</button>
+              <div class="graph-arrows-mid">
+                <button type="button" class="gbtn" id="gLeft">◀</button>
+                <button type="button" class="gbtn" id="gDown">▼</button>
+                <button type="button" class="gbtn" id="gRight">▶</button>
+              </div>
+              <div class="graph-arrows-row">
+                <button type="button" class="gbtn" id="gMinus">–</button>
+                <div class="greadout" id="gAReadout">a = 7</div>
+                <button type="button" class="gbtn" id="gPlus">+</button>
+              </div>
+            </div>
+            <div class="small muted" style="margin-top:6px;">
+              +/– changes grid size. Arrows pan view (optional; you can ignore pan if you want).
+            </div>
+          </div>
+
+          <div class="graph-ctrl">
+            <div class="small muted" style="margin-bottom:6px;">Insert into</div>
+            <select id="graphInsertTarget">
+              <option value="prompt">Question Prompt</option>
+              <option value="choice0">Choice A (MC only)</option>
+              <option value="choice1">Choice B (MC only)</option>
+              <option value="choice2">Choice C (MC only)</option>
+              <option value="choice3">Choice D (MC only)</option>
+            </select>
+
+            <div class="grid2" style="margin-top:10px;">
+              <div class="field" style="margin:0;">
+                <label>Scale</label>
+                <input type="number" id="gScale" value="0.45" step="0.05" min="0.05">
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Axis padding</label>
+                <input type="number" id="gPad" value="0.5" step="0.1" min="0">
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="field" style="margin:0;">
+                <label>Domain min</label>
+                <input type="number" id="gDomMin" value="-2.6" step="0.1">
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Domain max</label>
+                <input type="number" id="gDomMax" value="2.6" step="0.1">
+              </div>
+            </div>
+
+            <div class="field" style="margin:0;">
+              <label>Samples</label>
+              <input type="number" id="gSamples" value="200" step="10" min="20">
+            </div>
+          </div>
         </div>
 
-        <div class="field" style="max-width:130px;">
-          <label>Axis padding</label>
-          <input type="number" id="gPad" value="0.5" step="0.1" min="0" style="text-align:center;">
-        </div>
-
-        <div class="field">
-          <label>Plot domain min</label>
-          <input type="number" id="gDomMin" value="-2.6" step="0.1">
-        </div>
-
-        <div class="field">
-          <label>Plot domain max</label>
-          <input type="number" id="gDomMax" value="2.6" step="0.1">
-        </div>
-
-        <div class="field">
-          <label>Samples</label>
-          <input type="number" id="gSamples" value="200" step="10" min="20">
-        </div>
-
-        <div class="field">
-          <label>Curve style</label>
-          <select id="gCurveStyle">
-            <option value="thin" selected>thin</option>
-            <option value="thick">thick</option>
-            <option value="very thick">very thick</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Insert into</label>
-          <select id="graphInsertTarget">
-            <option value="prompt">Question Prompt</option>
-            <option value="choice0">Choice A (MC only)</option>
-            <option value="choice1">Choice B (MC only)</option>
-            <option value="choice2">Choice C (MC only)</option>
-            <option value="choice3">Choice D (MC only)</option>
-          </select>
-          <div class="small muted">Choices only apply when the selected item is Multiple Choice.</div>
+        <div class="graph-stage">
+          <!-- Interactive SVG grid -->
+          <svg id="graphSvg" viewBox="0 0 600 600" class="graph-svg" aria-label="Graph editor"></svg>
+          <div class="graph-hint small muted">
+            Click a square intersection to place a point. Click a point to edit label. Drag to move.
+          </div>
         </div>
       </div>
 
-      <div class="field">
-        <label>Function f(x)</label>
-        <input type="text" id="gFunc" value="x^2" placeholder="e.g., (x+1)^2 or 2(x-2)^2-3">
-        <div class="small muted">
-          Use <code>x</code> as the variable. Squared terms like <code>(x+1)^2</code> are auto-expanded.
+    <div class="graph-right">
+  <!-- Plots -->
+  <div class="panel" style="box-shadow:none;">
+    <div class="hd">
+      <div class="title">Plots (multiple functions)</div>
+      <button type="button" class="primary" id="btnAddPlot">+ Add plot</button>
+    </div>
+    <div class="bd" id="plotsHost"></div>
+  </div>
+
+  <!-- Lines (NOW ONLY IN GRAPH BUILDER) -->
+  <div class="panel" style="box-shadow:none; margin-top:12px;">
+    <div class="hd">
+      <div class="title">Lines</div>
+      <div class="btnrow" style="gap:8px;">
+        <button type="button" id="btnUndoLine">Undo</button>
+        <button type="button" class="danger" id="btnClearLines">Clear</button>
+        <button type="button" class="danger" id="btnDeleteLine" disabled>Delete Selected</button>
+      </div>
+    </div>
+    <div class="bd">
+      <div id="linesHost" class="lines-host"></div>
+      <div class="small muted" style="margin-top:8px;">
+        Tip: click a line in the graph to select it, then Delete Selected.
+      </div>
+    </div>
+  </div>
+
+  <!-- Points -->
+  <div class="panel" style="box-shadow:none; margin-top:12px;">
+    <div class="hd">
+      <div class="title">Points</div>
+      <button type="button" id="btnClearPoints">Clear</button>
+    </div>
+    <div class="bd">
+      <div id="pointEditor" class="point-editor" style="display:none;">
+        <div class="small muted" style="margin-bottom:8px;">Selected point</div>
+        <div class="grid2">
+          <div class="field" style="margin:0;">
+            <label>x</label>
+            <input type="number" id="pX" step="1">
+          </div>
+          <div class="field" style="margin:0;">
+            <label>y</label>
+            <input type="number" id="pY" step="1">
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:8px;">
+          <label>Label (LaTeX)</label>
+          <input type="text" id="pLabel" placeholder="e.g., A or (2,3)">
+        </div>
+
+        <div class="field">
+          <label>Label position</label>
+          <select id="pPos">
+            <option value="above" selected>above</option>
+            <option value="below">below</option>
+            <option value="left">left</option>
+            <option value="right">right</option>
+            <option value="above right">above right</option>
+            <option value="below right">below right</option>
+            <option value="above left">above left</option>
+            <option value="below left">below left</option>
+          </select>
+        </div>
+
+        <div class="btnrow">
+          <button type="button" class="danger" id="btnDeletePoint">Delete point</button>
         </div>
       </div>
 
       <div class="hr"></div>
 
-      <div class="field">
-        <div class="btnrow" style="justify-content:space-between; align-items:center;">
-          <label style="margin:0;">Points</label>
-          <button type="button" id="btnAddGraphPoint">Add point</button>
-        </div>
+      <div id="pointsHost" class="points-host"></div>
 
-        <div id="graphPointsHost" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
-
-        <div class="small muted" style="margin-top:8px;">
-          Add points as (x,y) with optional label and label position.
-        </div>
-      </div>
-
-      <div class="btnrow" style="justify-content:flex-end;">
+      <div class="btnrow" style="justify-content:flex-end; margin-top:10px;">
         <button type="button" class="primary" id="btnInsertGraphLatex">Insert LaTeX</button>
       </div>
     </div>
   </div>
 </div>
+  
+
+    </div>
+  </div>
+</div>
+
 
 
 
@@ -621,37 +714,37 @@ function showBuilder() {
   }
 
   function createQuestion(type) {
-    const base = {
-      id: uid("q"),
-      type,
-      points: "",
-      prompt: "",
-      images: [],
-      shuffleSelected: true,
-      choices: null,
-      correctChoiceId: null,
-      numericAnswer: "",
-      infoImageScale: "0.75",
-      mcColumns: 1        // NEW: 1 | 2 | 4
-    };
+  const base = {
+    id: uid("q"),
+    type,
+    // Default points: MC + Numeric => 1, others blank
+    points: (type === "multiple_choice" || type === "numeric") ? 1 : "",
+    prompt: "",
+    images: [],
+    shuffleSelected: true,
+    choices: null,
+    correctChoiceId: null,
+    numericAnswer: "",
+    infoImageScale: "0.75",
+    mcColumns: 1
+  };
 
-
-
-    if (type === "multiple_choice") {
-      base.choices = [
-        { id: uid("c"), text: "" },
-        { id: uid("c"), text: "" },
-        { id: uid("c"), text: "" },
-        { id: uid("c"), text: "" }
-      ];
-      base.correctChoiceId = base.choices[0].id;
-    }
-
-    state.questions.push(base);
-    state.selectedId = base.id;
-    renderList();
-    loadEditor(base.id);
+  if (type === "multiple_choice") {
+    base.choices = [
+      { id: uid("c"), text: "" },
+      { id: uid("c"), text: "" },
+      { id: uid("c"), text: "" },
+      { id: uid("c"), text: "" }
+    ];
+    base.correctChoiceId = base.choices[0].id;
   }
+
+  state.questions.push(base);
+  state.selectedId = base.id;
+  renderList();
+  loadEditor(base.id);
+}
+
 
   function saveEdits() {
     const q = state.questions.find(x => x.id === state.selectedId);
@@ -1325,82 +1418,578 @@ function insertTableLatex() {
 }
 
 // ----------------------
-// Graph Builder (TikZ grid + plot + points)
+// Graph Builder (Interactive SVG + Multi-Plot)
 // ----------------------
 
 const graphBuilder = {
-  points: []
+  // view settings
+  a: 7,
+  pad: 0.5,
+  scale: 0.45,
+  domMin: -2.6,
+  domMax: 2.6,
+  samples: 200,
+  
+  // optional panning (integer offset in grid units)
+  panX: 0,
+  panY: 0,
+
+  showGrid: true,
+  showAxes: true,
+  lines: [],
+  selectedLineId: null,
+
+  tool: { mode: "point", lineStart: null },  // point/line tool state
+
+  // multi-plot functions
+  plots: [
+    { id: uid("plot"), expr: "x^2", style: "thin" }
+  ],
+
+  // points
+  points: [], // { id, x, y, label, pos }
+  selectedPointId: null,
+
+  // svg cached
+  svgSize: 600
 };
 
 function openGraphModal() {
   el("graphModal").style.display = "block";
-  if (!graphBuilder.points.length) {
-    graphBuilder.points = [
-      { x: "1", y: "1", label: "A", pos: "above right" }
-    ];
-  }
-  renderGraphPoints();
+  el("gScale").value = graphBuilder.scale;
+  el("gPad").value = graphBuilder.pad;
+  el("gDomMin").value = graphBuilder.domMin;
+  el("gDomMax").value = graphBuilder.domMax;
+  el("gSamples").value = graphBuilder.samples;
+
+  renderPlotsUI();
+  renderPointsUI();
+  renderLinesUI();   // <— add this
+  drawGraphSvg();
+  updateAReadout();
 }
+
 
 function closeGraphModal() {
   el("graphModal").style.display = "none";
 }
 
-function renderGraphPoints() {
-  const host = el("graphPointsHost");
+function updateAReadout() {
+  el("gAReadout").textContent = `a = ${graphBuilder.a}`;
+}
+
+function clampA(n) {
+  return Math.max(1, Math.min(30, n)); // safety
+}
+
+function graphWorldBounds() {
+  // world coords visible
+  const a = graphBuilder.a;
+  return {
+    xmin: -a + graphBuilder.panX,
+    xmax:  a + graphBuilder.panX,
+    ymin: -a + graphBuilder.panY,
+    ymax:  a + graphBuilder.panY
+  };
+}
+
+function worldToSvg(x, y) {
+  const { xmin, xmax, ymin, ymax } = graphWorldBounds();
+  const S = graphBuilder.svgSize;
+
+  const px = (x - xmin) / (xmax - xmin) * S;
+  const py = (ymax - y) / (ymax - ymin) * S; // invert y
+  return { px, py };
+}
+
+function svgToWorld(px, py) {
+  const { xmin, xmax, ymin, ymax } = graphWorldBounds();
+  const S = graphBuilder.svgSize;
+
+  const x = xmin + (px / S) * (xmax - xmin);
+  const y = ymax - (py / S) * (ymax - ymin);
+  return { x, y };
+}
+
+function snap(n) {
+  return Math.round(n); // snap to integer grid intersections
+}
+
+function svgEl(name, attrs = {}) {
+  const n = document.createElementNS("http://www.w3.org/2000/svg", name);
+  Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, String(v)));
+  return n;
+}
+
+// --- Helpers required by drawGraphSvg() ---
+
+function safeEvalExpr(expr, x) {
+  // Supports: numbers, x, + - * / ^, parentheses, decimals, spaces
+  // Converts ^ to JS **. Returns NaN on invalid input.
+  const s = String(expr || "").trim();
+  if (!s) return NaN;
+
+  // Very small sanitization to avoid arbitrary JS:
+  // allow digits, x/X, operators, parentheses, decimal point, spaces
+  if (!/^[0-9xX+\-*/^().\s]+$/.test(s)) return NaN;
+
+  const js = s.replace(/\bX\b/g, "x").replace(/\^/g, "**");
+
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function("x", `return (${js});`);
+    const y = fn(x);
+    return Number.isFinite(y) ? y : NaN;
+  } catch {
+    return NaN;
+  }
+}
+
+function plotToPath(expr, samples = 500) {
+  const { xmin, xmax, ymin, ymax } = graphWorldBounds();
+
+  const dx = (xmax - xmin) / samples;
+  let d = "";
+  let penDown = false;
+
+  for (let i = 0; i <= samples; i++) {
+    const x = xmin + i * dx;
+    const y = safeEvalExpr(expr, x);
+
+    if (!Number.isFinite(y)) {
+      penDown = false;
+      continue;
+    }
+
+    // Simple clipping: if far off-screen, lift pen
+    if (y < ymin - 5 || y > ymax + 5) {
+      penDown = false;
+      continue;
+    }
+
+    const { px, py } = worldToSvg(x, y);
+
+    if (!penDown) {
+      d += `M ${px.toFixed(2)} ${py.toFixed(2)} `;
+      penDown = true;
+    } else {
+      d += `L ${px.toFixed(2)} ${py.toFixed(2)} `;
+    }
+  }
+
+  return d.trim();
+}
+
+
+// --- REPLACE YOUR EXISTING drawGraphSvg() WITH THIS ---
+function drawGraphSvg() {
+  const svg = el("graphSvg");
+  svg.innerHTML = "";
+
+  const S = graphBuilder.svgSize;
+  const { xmin, xmax, ymin, ymax } = graphWorldBounds();
+
+  // Background
+  svg.appendChild(svgEl("rect", { x: 0, y: 0, width: S, height: S, fill: "#ffffff" }));
+
+  // Grid
+  if (graphBuilder.showGrid !== false) {
+    for (let x = Math.ceil(xmin); x <= Math.floor(xmax); x++) {
+      const { px } = worldToSvg(x, 0);
+      svg.appendChild(svgEl("line", {
+        x1: px, y1: 0, x2: px, y2: S,
+        stroke: "rgba(17,24,39,0.08)"
+      }));
+    }
+    for (let y = Math.ceil(ymin); y <= Math.floor(ymax); y++) {
+      const { py } = worldToSvg(0, y);
+      svg.appendChild(svgEl("line", {
+        x1: 0, y1: py, x2: S, y2: py,
+        stroke: "rgba(17,24,39,0.08)"
+      }));
+    }
+  }
+
+  // Axes
+  if (graphBuilder.showAxes !== false) {
+    if (xmin <= 0 && xmax >= 0) {
+      const { px } = worldToSvg(0, 0);
+      svg.appendChild(svgEl("line", {
+        x1: px, y1: 0, x2: px, y2: S,
+        stroke: "rgba(17,24,39,0.35)",
+        "stroke-width": 2
+      }));
+    }
+    if (ymin <= 0 && ymax >= 0) {
+      const { py } = worldToSvg(0, 0);
+      svg.appendChild(svgEl("line", {
+        x1: 0, y1: py, x2: S, y2: py,
+        stroke: "rgba(17,24,39,0.35)",
+        "stroke-width": 2
+      }));
+    }
+  }
+
+  // Plots
+  if (Array.isArray(graphBuilder.plots)) {
+    graphBuilder.plots.forEach(pl => {
+      const expr = (pl && pl.expr) ? String(pl.expr) : "";
+      if (!expr.trim()) return;
+
+      const d = plotToPath(expr, 650);
+      if (!d) return;
+
+      const style = (pl.style || "thin").trim();
+      const strokeW = (style === "very thick") ? 3 : (style === "thick") ? 2 : 1.5;
+
+      svg.appendChild(svgEl("path", {
+        d,
+        fill: "none",
+        stroke: "rgba(17,24,39,0.75)",
+        "stroke-width": strokeW,
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round"
+      }));
+    });
+  }
+
+  // Lines (click-selectable)
+  graphBuilder.lines = Array.isArray(graphBuilder.lines) ? graphBuilder.lines : [];
+  graphBuilder.lines.forEach(L => {
+    const a = worldToSvg(L.x1, L.y1);
+    const b = worldToSvg(L.x2, L.y2);
+
+    const isSel = (L.id === graphBuilder.selectedLineId);
+
+    const lineEl = svgEl("line", {
+      x1: a.px, y1: a.py, x2: b.px, y2: b.py,
+      stroke: isSel ? "rgba(79,70,229,0.95)" : "rgba(79,70,229,0.65)",
+      "stroke-width": isSel ? 4 : 2,
+      "data-lid": L.id,
+      "pointer-events": "stroke"
+    });
+
+    // easier clicking
+    lineEl.style.cursor = "pointer";
+    svg.appendChild(lineEl);
+  });
+
+  // Points
+  graphBuilder.points = Array.isArray(graphBuilder.points) ? graphBuilder.points : [];
+  graphBuilder.points.forEach(p => {
+    const { px, py } = worldToSvg(p.x, p.y);
+    const isSel = (p.id === graphBuilder.selectedPointId);
+
+    const g = svgEl("g", { "data-pid": p.id });
+
+    g.appendChild(svgEl("circle", {
+      cx: px, cy: py, r: isSel ? 7 : 6,
+      fill: isSel ? "rgba(79,70,229,0.40)" : "rgba(79,70,229,0.25)",
+      stroke: "rgba(79,70,229,0.85)",
+      "stroke-width": 2
+    }));
+
+    if (p.label) {
+      const t = svgEl("text", {
+        x: px + 10, y: py - 10,
+        fill: "rgba(17,24,39,0.75)",
+        "font-size": 12,
+        "font-weight": 700
+      });
+      t.textContent = p.label;
+      g.appendChild(t);
+    }
+
+    g.style.cursor = "pointer";
+    svg.appendChild(g);
+  });
+
+  // Interactions
+  svg.onmousedown = (evt) => {
+    const targetPoint = evt.target.closest("g[data-pid]");
+    if (targetPoint) {
+      const pid = targetPoint.getAttribute("data-pid");
+      graphBuilder.selectedLineId = null;
+      selectPoint(pid);
+      startDragPoint(evt, pid);
+      renderLinesUI();
+      return;
+    }
+
+    const targetLine = evt.target.closest("line[data-lid]");
+    if (targetLine) {
+      const lid = targetLine.getAttribute("data-lid");
+      graphBuilder.selectedPointId = null;
+      graphBuilder.selectedLineId = lid;
+      el("pointEditor").style.display = "none";
+      drawGraphSvg();
+      renderLinesUI();
+      return;
+    }
+
+    // Empty space -> add point or line endpoints
+    const sp = clientToSvg(svg, evt.clientX, evt.clientY);
+    const w = svgToWorld(sp.x, sp.y);
+    const x = snap(w.x);
+    const y = snap(w.y);
+
+    graphBuilder.selectedLineId = null;
+
+    if (graphBuilder.tool && graphBuilder.tool.mode === "line") {
+      if (!graphBuilder.tool.lineStart) {
+        graphBuilder.tool.lineStart = { x, y };
+      } else {
+        const s = graphBuilder.tool.lineStart;
+        graphBuilder.lines.push({ id: uid("ln"), x1: s.x, y1: s.y, x2: x, y2: y });
+        graphBuilder.tool.lineStart = null;
+      }
+      drawGraphSvg();
+      renderLinesUI();
+      return;
+    }
+
+    const pt = { id: uid("pt"), x, y, label: "", pos: "above right" };
+    graphBuilder.points.push(pt);
+    selectPoint(pt.id);
+    renderPointsUI();
+    renderLinesUI();
+    drawGraphSvg();
+  };
+
+  svg.onmousemove = null;
+  svg.onmouseup = null;
+}
+
+
+
+
+
+    
+
+function startDragPoint(downEvt, pid) {
+  const svg = el("graphSvg");
+
+  function move(evt) {
+    const sp = clientToSvg(svg, evt.clientX, evt.clientY); // svg-point
+    const px = sp.x;
+    const py = sp.y;
+
+    const w = svgToWorld(px, py);
+    const x = snap(w.x);
+    const y = snap(w.y);
+
+    const pt = graphBuilder.points.find(pp => pp.id === pid);
+    if (!pt) return;
+
+    pt.x = x;
+    pt.y = y;
+
+    // keep editor synced if selected
+    if (graphBuilder.selectedPointId === pid) {
+      el("pX").value = pt.x;
+      el("pY").value = pt.y;
+    }
+
+    drawGraphSvg();
+    renderPointsUI();
+  }
+
+  function up() {
+    window.removeEventListener("mousemove", move);
+    window.removeEventListener("mouseup", up);
+  }
+
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", up);
+}
+
+
+function selectPoint(pid) {
+  graphBuilder.selectedPointId = pid;
+  const p = graphBuilder.points.find(x => x.id === pid);
+  const editor = el("pointEditor");
+  if (!p) {
+    editor.style.display = "none";
+    return;
+  }
+
+  editor.style.display = "block";
+  el("pX").value = p.x;
+  el("pY").value = p.y;
+  el("pLabel").value = p.label || "";
+  el("pPos").value = p.pos || "above right";
+
+  drawGraphSvg();
+}
+
+function renderLinesUI() {
+  const host = el("linesHost");
   if (!host) return;
 
   host.innerHTML = "";
 
-  graphBuilder.points.forEach((p, i) => {
+  const btnDel = el("btnDeleteLine");
+  if (btnDel) btnDel.disabled = !graphBuilder.selectedLineId;
+
+  if (!graphBuilder.lines || graphBuilder.lines.length === 0) {
+    host.innerHTML = `<div class="small muted">No lines drawn.</div>`;
+    return;
+  }
+
+  graphBuilder.lines.forEach((L, idx) => {
     const row = document.createElement("div");
-    row.style.display = "grid";
-    row.style.gridTemplateColumns = "80px 80px 1fr 140px 32px";
-    row.style.gap = "6px";
+    row.className = "line-row";
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.padding = "8px 10px";
+    row.style.border = "1px solid rgba(36,50,74,0.18)";
+    row.style.borderRadius = "10px";
+    row.style.marginBottom = "8px";
+    row.style.cursor = "pointer";
+    row.style.background = (L.id === graphBuilder.selectedLineId) ? "rgba(79,70,229,0.06)" : "transparent";
 
-    const x = document.createElement("input");
-    x.value = p.x;
-    x.placeholder = "x";
-    x.oninput = e => p.x = e.target.value;
-
-    const y = document.createElement("input");
-    y.value = p.y;
-    y.placeholder = "y";
-    y.oninput = e => p.y = e.target.value;
-
-    const lbl = document.createElement("input");
-    lbl.value = p.label;
-    lbl.placeholder = "Label";
-    lbl.oninput = e => p.label = e.target.value;
-
-    const pos = document.createElement("select");
-    ["above","below","left","right","above right","below right","above left","below left"]
-      .forEach(v => {
-        const o = document.createElement("option");
-        o.value = v;
-        o.textContent = v;
-        pos.appendChild(o);
-      });
-    pos.value = p.pos;
-    pos.onchange = e => p.pos = e.target.value;
+    const left = document.createElement("div");
+    left.innerHTML = `
+      <div class="tag">Line ${idx + 1}</div>
+      <div class="small muted">(${L.x1}, ${L.y1}) → (${L.x2}, ${L.y2})</div>
+    `;
 
     const del = document.createElement("button");
-    del.textContent = "✕";
-    del.onclick = () => {
-      graphBuilder.points.splice(i, 1);
-      renderGraphPoints();
+    del.type = "button";
+    del.textContent = "Delete";
+    del.className = "danger";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      deleteLineById(L.id);
     };
 
-    row.append(x, y, lbl, pos, del);
+    row.onclick = () => {
+      graphBuilder.selectedPointId = null;
+      graphBuilder.selectedLineId = L.id;
+      el("pointEditor").style.display = "none";
+      drawGraphSvg();
+      renderLinesUI();
+    };
+
+    row.appendChild(left);
+    row.appendChild(del);
     host.appendChild(row);
   });
 }
 
-function tikzifyExpression(expr) {
-  let s = expr.trim();
+function deleteLineById(lid) {
+  graphBuilder.lines = (graphBuilder.lines || []).filter(x => x.id !== lid);
+  if (graphBuilder.selectedLineId === lid) graphBuilder.selectedLineId = null;
+  drawGraphSvg();
+  renderLinesUI();
+}
 
+function undoLastLine() {
+  if (!graphBuilder.lines || graphBuilder.lines.length === 0) return;
+  const removed = graphBuilder.lines.pop();
+  if (removed && graphBuilder.selectedLineId === removed.id) graphBuilder.selectedLineId = null;
+  drawGraphSvg();
+  renderLinesUI();
+}
+
+function clearAllLines() {
+  graphBuilder.lines = [];
+  graphBuilder.selectedLineId = null;
+  graphBuilder.tool.lineStart = null;
+  drawGraphSvg();
+  renderLinesUI();
+}
+
+
+
+function renderPointsUI() {
+  const host = el("pointsHost");
+  host.innerHTML = "";
+
+  graphBuilder.points.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "point-row";
+    row.style.cursor = "pointer";
+
+    const left = document.createElement("div");
+    left.innerHTML = `
+      <div class="tag">(${p.x}, ${p.y})</div>
+      <div class="small muted">${p.label ? `Label: ${p.label}` : "No label"}</div>
+    `;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Edit";
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      selectPoint(p.id);
+    };
+
+    row.appendChild(left);
+    row.appendChild(btn);
+
+    row.onclick = () => selectPoint(p.id);
+
+    host.appendChild(row);
+  });
+}
+
+function renderPlotsUI() {
+  const host = el("plotsHost");
+  host.innerHTML = "";
+
+  graphBuilder.plots.forEach((pl, idx) => {
+    const card = document.createElement("div");
+    card.className = "plot-card";
+
+    card.innerHTML = `
+      <div class="small muted" style="margin-bottom:8px;">Plot ${idx + 1}</div>
+      <div class="row">
+        <input type="text" data-k="expr" placeholder="f(x) e.g. x^2" value="${pl.expr || ""}">
+        <select data-k="style">
+          <option value="thin">thin</option>
+          <option value="thick">thick</option>
+          <option value="very thick">very thick</option>
+        </select>
+        <button type="button" data-act="del">Delete</button>
+      </div>
+      <div class="small muted" style="margin-top:8px;">
+        Tip: use x as the variable. Example: (x+1)^2 or 2(x-2)^2-3
+      </div>
+    `;
+
+    const expr = card.querySelector('input[data-k="expr"]');
+    const style = card.querySelector('select[data-k="style"]');
+    const del = card.querySelector('button[data-act="del"]');
+
+    style.value = pl.style || "thin";
+
+    expr.oninput = () => { pl.expr = expr.value; drawGraphSvg(); };
+    style.onchange = () => { pl.style = style.value; drawGraphSvg(); };
+
+
+    del.onclick = () => {
+      if (graphBuilder.plots.length <= 1) return; // keep at least one
+      graphBuilder.plots = graphBuilder.plots.filter(x => x.id !== pl.id);
+      renderPlotsUI();
+    };
+
+    host.appendChild(card);
+  });
+}
+
+function tikzifyExpression(expr) {
+  let s = (expr || "").trim();
+  if (!s) return "\\x"; // harmless fallback
+
+  // Insert multiplication for things like 2(x+1)
   s = s.replace(/(\d)\(/g, "$1*(");
+
+  // Expand (x+1)^2 into (x+1)*(x+1) (TikZ-friendly)
   s = s.replace(/\(([^)]+)\)\^2/g, "($1)*($1)");
+
+  // Replace x with \x for pgf math variable
   s = s.replace(/\bx\^2\b/g, "(\\x)*(\\x)");
   s = s.replace(/\bx\b/g, "\\x");
 
@@ -1408,15 +1997,18 @@ function tikzifyExpression(expr) {
 }
 
 function buildGraphTikzLatex() {
-  const scale = Number(el("gScale").value);
-  const a = Number(el("gA").value);
-  const pad = Number(el("gPad").value);
-  const dmin = Number(el("gDomMin").value);
-  const dmax = Number(el("gDomMax").value);
-  const samples = Number(el("gSamples").value);
-  const style = el("gCurveStyle").value;
-  const expr = tikzifyExpression(el("gFunc").value);
+  // pull current form values
+  graphBuilder.scale = Number(el("gScale").value);
+  graphBuilder.pad = Number(el("gPad").value);
+  graphBuilder.domMin = Number(el("gDomMin").value);
+  graphBuilder.domMax = Number(el("gDomMax").value);
+  graphBuilder.samples = Number(el("gSamples").value);
 
+  const scale = graphBuilder.scale;
+  const a = graphBuilder.a;
+  const pad = graphBuilder.pad;
+
+  // Single grid, multiple plots, multiple points
   const lines = [
     `\\begin{tikzpicture}[scale=${scale}]`,
     `\\def\\a{${a}}`,
@@ -1425,17 +2017,26 @@ function buildGraphTikzLatex() {
     `\\draw[step=1] (-\\a,-\\a) grid (\\a,\\a);`,
     `\\draw[<->, thick] (-\\a-\\pad,0)--(\\a+\\pad,0);`,
     `\\draw[<->, thick] (0,-\\a-\\pad)--(0,\\a+\\pad);`,
-    ``,
-    `\\draw[${style}, domain=${dmin}:${dmax}, samples=${samples}, smooth]`,
-    `  plot (\\x,{${expr}});`,
     ``
   ];
 
+  // plots
+  graphBuilder.plots.forEach(pl => {
+    const style = (pl.style || "thin").trim();
+    const expr = tikzifyExpression(pl.expr);
+    lines.push(
+      `\\draw[${style}, domain=${graphBuilder.domMin}:${graphBuilder.domMax}, samples=${graphBuilder.samples}, smooth]`,
+      `  plot (\\x,{${expr}});`,
+      ``
+    );
+  });
+
+  // points
   graphBuilder.points.forEach(p => {
-    if (!p.x || !p.y) return;
     lines.push(`\\filldraw (${p.x},${p.y}) circle (3pt);`);
     if (p.label) {
-      lines.push(`\\node[${p.pos}] at (${p.x},${p.y}) {$${p.label}$};`);
+      // LaTeX math mode label
+      lines.push(`\\node[${p.pos || "above right"}] at (${p.x},${p.y}) {$${p.label}$};`);
     }
   });
 
@@ -1463,6 +2064,89 @@ function insertGraphLatex() {
   loadEditor(q.id);
 }
 
+// Wire interactive controls
+function wireGraphUI() {
+  el("btnUndoLine")?.addEventListener("click", undoLastLine);
+
+  el("btnClearLines")?.addEventListener("click", () => {
+    clearAllLines();
+  });
+
+  el("btnDeleteLine")?.addEventListener("click", () => {
+    if (!graphBuilder.selectedLineId) return;
+    deleteLineById(graphBuilder.selectedLineId);
+  });
+
+  // add plot
+  el("btnAddPlot").addEventListener("click", () => {
+    graphBuilder.plots.push({ id: uid("plot"), expr: "x^2", style: "thin" });
+    renderPlotsUI();
+  });
+
+  // clear points
+  el("btnClearPoints").addEventListener("click", () => {
+    graphBuilder.points = [];
+    graphBuilder.selectedPointId = null;
+    el("pointEditor").style.display = "none";
+    renderPointsUI();
+    drawGraphSvg();
+  });
+
+  // point editor bindings
+  el("pX").addEventListener("input", () => {
+    const p = graphBuilder.points.find(x => x.id === graphBuilder.selectedPointId);
+    if (!p) return;
+    p.x = snap(Number(el("pX").value));
+    drawGraphSvg(); renderPointsUI();
+  });
+  el("pY").addEventListener("input", () => {
+    const p = graphBuilder.points.find(x => x.id === graphBuilder.selectedPointId);
+    if (!p) return;
+    p.y = snap(Number(el("pY").value));
+    drawGraphSvg(); renderPointsUI();
+  });
+  el("pLabel").addEventListener("input", () => {
+    const p = graphBuilder.points.find(x => x.id === graphBuilder.selectedPointId);
+    if (!p) return;
+    p.label = el("pLabel").value;
+    drawGraphSvg(); renderPointsUI();
+  });
+  el("pPos").addEventListener("change", () => {
+    const p = graphBuilder.points.find(x => x.id === graphBuilder.selectedPointId);
+    if (!p) return;
+    p.pos = el("pPos").value;
+    drawGraphSvg(); renderPointsUI();
+  });
+  el("btnDeletePoint").addEventListener("click", () => {
+    const pid = graphBuilder.selectedPointId;
+    if (!pid) return;
+    graphBuilder.points = graphBuilder.points.filter(x => x.id !== pid);
+    graphBuilder.selectedPointId = null;
+    el("pointEditor").style.display = "none";
+    renderPointsUI();
+    drawGraphSvg();
+  });
+
+  // grid size
+  el("gPlus").addEventListener("click", () => {
+    graphBuilder.a = clampA(graphBuilder.a + 1);
+    updateAReadout();
+    drawGraphSvg();
+  });
+  el("gMinus").addEventListener("click", () => {
+    graphBuilder.a = clampA(graphBuilder.a - 1);
+    updateAReadout();
+    drawGraphSvg();
+  });
+
+  // pan (optional but feels good)
+  el("gLeft").addEventListener("click", () => { graphBuilder.panX -= 1; drawGraphSvg(); });
+  el("gRight").addEventListener("click", () => { graphBuilder.panX += 1; drawGraphSvg(); });
+  el("gUp").addEventListener("click", () => { graphBuilder.panY += 1; drawGraphSvg(); });
+  el("gDown").addEventListener("click", () => { graphBuilder.panY -= 1; drawGraphSvg(); });
+}
+  
+wireGraphUI();
 
 
  function latexQuestionBlock(q) {
@@ -2146,6 +2830,16 @@ ${questionsLatex}
     `;
   }
 
+  function clientToSvg(svg, clientX, clientY) {
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: 0, y: 0 };
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y }; // in viewBox units (0..600)
+}
+
   function refreshAfterReorder() {
     // Update the right-side mapping panel
     renderMapping();
@@ -2236,10 +2930,25 @@ ${questionsLatex}
   el("btnOpenGraphBuilder").addEventListener("click", openGraphModal);
   el("btnCloseGraphModal").addEventListener("click", closeGraphModal);
   el("btnInsertGraphLatex").addEventListener("click", insertGraphLatex);
-  el("btnAddGraphPoint").addEventListener("click", () => {
-  graphBuilder.points.push({ x: "", y: "", label: "", pos: "above right" });
-  renderGraphPoints();
+
+  el("btnToolPoint").addEventListener("click", () => {
+  graphBuilder.tool.mode = "point";
+  graphBuilder.tool.lineStart = null;
+  drawGraphSvg();
 });
+
+el("btnToolLine").addEventListener("click", () => {
+  graphBuilder.tool.mode = "line";
+  graphBuilder.tool.lineStart = null;
+  drawGraphSvg();
+});
+
+el("btnToggleGrid").addEventListener("click", () => {
+  graphBuilder.showGrid = !graphBuilder.showGrid;
+  drawGraphSvg();
+});
+
+
 
 
     // HOME / IMPORT wiring
