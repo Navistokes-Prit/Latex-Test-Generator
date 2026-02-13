@@ -495,6 +495,11 @@
             <label>y</label>
             <input type="number" id="pY" step="1">
           </div>
+          <div class="field" style="margin-top:8px;">
+  <label>Dot size (0 = no dot)</label>
+  <input type="number" id="pR" step="0.5" min="0" value="3">
+</div>
+
         </div>
 
         <div class="field" style="margin-top:8px;">
@@ -1793,7 +1798,7 @@ function drawGraphSvg() {
     });
   }
 
-  // Lines (click-selectable)
+  // Lines (click-selectable) - BLACK in GUI
   graphBuilder.lines = Array.isArray(graphBuilder.lines) ? graphBuilder.lines : [];
   graphBuilder.lines.forEach(L => {
     const a = worldToSvg(L.x1, L.y1);
@@ -1803,18 +1808,17 @@ function drawGraphSvg() {
 
     const lineEl = svgEl("line", {
       x1: a.px, y1: a.py, x2: b.px, y2: b.py,
-      stroke: isSel ? "rgba(79,70,229,0.95)" : "rgba(79,70,229,0.65)",
+      stroke: isSel ? "rgba(0,0,0,0.95)" : "rgba(0,0,0,0.80)",
       "stroke-width": isSel ? 4 : 2,
       "data-lid": L.id,
       "pointer-events": "stroke"
     });
 
-    // easier clicking
     lineEl.style.cursor = "pointer";
     svg.appendChild(lineEl);
   });
 
-  // Points
+  // Points (variable radius; r=0 => label-only; BLACK in GUI)
   graphBuilder.points = Array.isArray(graphBuilder.points) ? graphBuilder.points : [];
   graphBuilder.points.forEach(p => {
     const { px, py } = worldToSvg(p.x, p.y);
@@ -1822,17 +1826,27 @@ function drawGraphSvg() {
 
     const g = svgEl("g", { "data-pid": p.id });
 
-    g.appendChild(svgEl("circle", {
-      cx: px, cy: py, r: isSel ? 7 : 6,
-      fill: isSel ? "rgba(79,70,229,0.40)" : "rgba(79,70,229,0.25)",
-      stroke: "rgba(79,70,229,0.85)",
-      "stroke-width": 2
-    }));
+    const pr = Number.isFinite(Number(p.r)) ? Number(p.r) : 3; // user setting
+    const showDot = pr > 0.001;
+
+    if (showDot) {
+      // Map "point size" to visible SVG radius (a bit bigger than TikZ pt)
+      const rSvg = isSel ? Math.max(4, pr + 2) : Math.max(3, pr + 1);
+
+      g.appendChild(svgEl("circle", {
+        cx: px, cy: py,
+        r: rSvg,
+        fill: "rgba(0,0,0,0.15)",
+        stroke: "rgba(0,0,0,0.85)",
+        "stroke-width": 2
+      }));
+    }
 
     if (p.label) {
       const t = svgEl("text", {
-        x: px + 10, y: py - 10,
-        fill: "rgba(17,24,39,0.75)",
+        x: px + 10,
+        y: py - 10,
+        fill: "rgba(0,0,0,0.85)",
         "font-size": 12,
         "font-weight": 700
       });
@@ -1888,7 +1902,9 @@ function drawGraphSvg() {
       return;
     }
 
-    const pt = { id: uid("pt"), x, y, label: "", pos: "above right" };
+    // default: create point (with adjustable radius; 0 => label-only)
+    const pt = { id: uid("pt"), x, y, label: "", pos: "above right", r: 3 };
+
     graphBuilder.points.push(pt);
     selectPoint(pt.id);
     renderPointsUI();
@@ -1899,6 +1915,7 @@ function drawGraphSvg() {
   svg.onmousemove = null;
   svg.onmouseup = null;
 }
+
 
 
 
@@ -1958,7 +1975,7 @@ function selectPoint(pid) {
   el("pY").value = p.y;
   el("pLabel").value = p.label || "";
   el("pPos").value = p.pos || "above right";
-
+  el("pR").value = (p.r ?? 3);
   drawGraphSvg();
 }
 
@@ -1968,10 +1985,12 @@ function renderLinesUI() {
 
   host.innerHTML = "";
 
-  const btnDel = el("btnDeleteLine");
-  if (btnDel) btnDel.disabled = !graphBuilder.selectedLineId;
+  const btnDelSelected = el("btnDeleteLine");
+  if (btnDelSelected) btnDelSelected.disabled = !graphBuilder.selectedLineId;
 
-  if (!graphBuilder.lines || graphBuilder.lines.length === 0) {
+  graphBuilder.lines = Array.isArray(graphBuilder.lines) ? graphBuilder.lines : [];
+
+  if (graphBuilder.lines.length === 0) {
     host.innerHTML = `<div class="small muted">No lines drawn.</div>`;
     return;
   }
@@ -1987,7 +2006,8 @@ function renderLinesUI() {
     row.style.borderRadius = "10px";
     row.style.marginBottom = "8px";
     row.style.cursor = "pointer";
-    row.style.background = (L.id === graphBuilder.selectedLineId) ? "rgba(79,70,229,0.06)" : "transparent";
+    row.style.background =
+      (L.id === graphBuilder.selectedLineId) ? "rgba(0,0,0,0.06)" : "transparent";
 
     const left = document.createElement("div");
     left.innerHTML = `
@@ -1999,17 +2019,20 @@ function renderLinesUI() {
     del.type = "button";
     del.textContent = "Delete";
     del.className = "danger";
-    del.onclick = () => {
-    graphBuilder.plots = graphBuilder.plots.filter(x => x.id !== pl.id);
-    renderPlotsUI();
-    drawGraphSvg();
-  };
 
+    // ✅ delete the LINE (not plots)
+    del.onclick = (e) => {
+      e.stopPropagation();
+      graphBuilder.lines = graphBuilder.lines.filter(x => x.id !== L.id);
+      if (graphBuilder.selectedLineId === L.id) graphBuilder.selectedLineId = null;
+      renderLinesUI();
+      drawGraphSvg();
+    };
 
     row.onclick = () => {
       graphBuilder.selectedPointId = null;
       graphBuilder.selectedLineId = L.id;
-      el("pointEditor").style.display = "none";
+      if (el("pointEditor")) el("pointEditor").style.display = "none";
       drawGraphSvg();
       renderLinesUI();
     };
@@ -2019,6 +2042,7 @@ function renderLinesUI() {
     host.appendChild(row);
   });
 }
+
 
 function deleteLineById(lid) {
   graphBuilder.lines = (graphBuilder.lines || []).filter(x => x.id !== lid);
@@ -2081,10 +2105,10 @@ function renderPlotsUI() {
   const host = el("plotsHost");
   host.innerHTML = "";
 
-  if (!graphBuilder.plots || graphBuilder.plots.length === 0) {
-  host.innerHTML = `<div class="small muted">No functions/plots added.</div>`;
-  return;
-}
+  if (!Array.isArray(graphBuilder.plots) || graphBuilder.plots.length === 0) {
+    host.innerHTML = `<div class="small muted">No functions/plots added.</div>`;
+    return;
+  }
 
   graphBuilder.plots.forEach((pl, idx) => {
     const card = document.createElement("div");
@@ -2093,7 +2117,7 @@ function renderPlotsUI() {
     card.innerHTML = `
       <div class="small muted" style="margin-bottom:8px;">Plot ${idx + 1}</div>
       <div class="row">
-        <input type="text" data-k="expr" placeholder="f(x) e.g. x^2" value="${pl.expr || ""}">
+        <input type="text" data-k="expr" placeholder="f(x) e.g. x^2" value="${(pl.expr || "").replace(/"/g, "&quot;")}">
         <select data-k="style">
           <option value="thin">thin</option>
           <option value="thick">thick</option>
@@ -2115,16 +2139,17 @@ function renderPlotsUI() {
     expr.oninput = () => { pl.expr = expr.value; drawGraphSvg(); };
     style.onchange = () => { pl.style = style.value; drawGraphSvg(); };
 
-
+    // ✅ allow delete down to 0
     del.onclick = () => {
-      if (graphBuilder.plots.length <= 1) return; // keep at least one
-      graphBuilder.plots = graphBuilder.plots.filter(x => x.id !== pl.id);
+      graphBuilder.plots = (graphBuilder.plots || []).filter(x => x.id !== pl.id);
       renderPlotsUI();
+      drawGraphSvg();
     };
 
     host.appendChild(card);
   });
 }
+
 
 function tikzifyExpression(expr) {
   let s = (expr || "").trim();
@@ -2144,31 +2169,43 @@ function tikzifyExpression(expr) {
 }
 
 function buildGraphTikzLatex() {
-  // pull current form values
-  graphBuilder.scale = Number(el("gScale").value);
-  graphBuilder.pad = Number(el("gPad").value);
-  graphBuilder.domMin = Number(el("gDomMin").value);
-  graphBuilder.domMax = Number(el("gDomMax").value);
-  graphBuilder.samples = Number(el("gSamples").value);
+  // pull current form values (guard if fields missing)
+  if (el("gScale"))   graphBuilder.scale   = Number(el("gScale").value);
+  if (el("gPad"))     graphBuilder.pad     = Number(el("gPad").value);
+  if (el("gDomMin"))  graphBuilder.domMin  = Number(el("gDomMin").value);
+  if (el("gDomMax"))  graphBuilder.domMax  = Number(el("gDomMax").value);
+  if (el("gSamples")) graphBuilder.samples = Number(el("gSamples").value);
 
   const scale = graphBuilder.scale;
   const a = graphBuilder.a;
   const pad = graphBuilder.pad;
 
-  // Single grid, multiple plots, multiple points
+  const showGrid = graphBuilder.showGrid !== false;
+  const showAxes = graphBuilder.showAxes !== false;
+
   const lines = [
     `\\begin{tikzpicture}[scale=${scale}]`,
     `\\def\\a{${a}}`,
     `\\def\\pad{${pad}}`,
-    ``,
-    `\\draw[step=1] (-\\a,-\\a) grid (\\a,\\a);`,
-    `\\draw[<->, thick] (-\\a-\\pad,0)--(\\a+\\pad,0);`,
-    `\\draw[<->, thick] (0,-\\a-\\pad)--(0,\\a+\\pad);`,
     ``
   ];
 
+  // grid (optional)
+  if (showGrid) {
+    lines.push(`\\draw[step=1] (-\\a,-\\a) grid (\\a,\\a);`, ``);
+  }
+
+  // axes (optional)
+  if (showAxes) {
+    lines.push(
+      `\\draw[<->, thick] (-\\a-\\pad,0)--(\\a+\\pad,0);`,
+      `\\draw[<->, thick] (0,-\\a-\\pad)--(0,\\a+\\pad);`,
+      ``
+    );
+  }
+
   // plots
-  graphBuilder.plots.forEach(pl => {
+  (graphBuilder.plots || []).forEach(pl => {
     const style = (pl.style || "thin").trim();
     const expr = tikzifyExpression(pl.expr);
     lines.push(
@@ -2178,38 +2215,62 @@ function buildGraphTikzLatex() {
     );
   });
 
+  // lines
+  (graphBuilder.lines || []).forEach(L => {
+    lines.push(`\\draw[thick, black] (${L.x1},${L.y1}) -- (${L.x2},${L.y2});`);
+  });
+
   // points
-  graphBuilder.points.forEach(p => {
-    lines.push(`\\filldraw (${p.x},${p.y}) circle (3pt);`);
-    if (p.label) {
-      // LaTeX math mode label
-      lines.push(`\\node[${p.pos || "above right"}] at (${p.x},${p.y}) {$${p.label}$};`);
-    }
+  (graphBuilder.points || []).forEach(p => {
+    const r = Number.isFinite(Number(p.r)) ? Number(p.r) : 3;
+
+    if (r > 0.001) lines.push(`\\filldraw[black] (${p.x},${p.y}) circle (${r}pt);`);
+    if (p.label) lines.push(`\\node[${p.pos || "above right"}] at (${p.x},${p.y}) {$${p.label}$};`);
   });
 
   lines.push(`\\end{tikzpicture}`);
   return lines.join("\n");
 }
 
+
+
 function insertGraphLatex() {
   const q = state.questions.find(x => x.id === state.selectedId);
-  if (!q) return;
+  if (!q) {
+    alert("Select a question first, then open the Graph Builder.");
+    return;
+  }
 
   const latex = buildGraphTikzLatex();
-  const target = el("graphInsertTarget").value;
+  const target = el("graphInsertTarget")?.value || "prompt";
 
   if (target === "prompt") {
-    el("qPrompt").value += "\n" + latex + "\n";
-    q.prompt = el("qPrompt").value;
+    const ta = el("qPrompt");
+    if (!ta) return;
+
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+
+    ta.value = ta.value.slice(0, start) + "\n" + latex + "\n" + ta.value.slice(end);
+    q.prompt = ta.value;
   } else {
-    const idx = Number(target.replace("choice",""));
+    if (q.type !== "multiple_choice") {
+      alert("Choices are only available for Multiple Choice questions. Insert into prompt instead.");
+      return;
+    }
     clamp4Choices(q);
-    q.choices[idx].text += "\n" + latex;
+
+    const idx = Number(target.replace("choice", ""));
+    if (Number.isNaN(idx) || idx < 0 || idx > 3) return;
+
+    q.choices[idx].text = (q.choices[idx].text || "") + "\n" + latex;
   }
 
   closeGraphModal();
   loadEditor(q.id);
+  saveToCache?.();
 }
+
 
 // Wire interactive controls
 function wireGraphUI() {
@@ -2217,6 +2278,15 @@ function wireGraphUI() {
 
   el("btnClearLines")?.addEventListener("click", () => {
     clearAllLines();
+  });
+
+  el("pR").addEventListener("input", () => {
+    const p = graphBuilder.points.find(x => x.id === graphBuilder.selectedPointId);
+    if (!p) return;
+    const v = Number(el("pR").value);
+    p.r = Number.isFinite(v) ? Math.max(0, v) : 3;
+    drawGraphSvg();
+    renderPointsUI();
   });
 
   el("btnDeleteLine")?.addEventListener("click", () => {
