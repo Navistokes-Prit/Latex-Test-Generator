@@ -1,3 +1,10 @@
+/* =========================================================
+   LaTeX Test Builder — Option B (FULL PAGE SCROLL)
+   - The browser/page scrolls to reach Mapping / Shuffle Key
+   - No fixed viewport “app shell”
+   - Header can be sticky (enabled below)
+   ========================================================= */
+
 :root{
   --bg:#f6f8fc;
   --panel:#ffffff;
@@ -25,10 +32,11 @@
 html, body{
   margin:0;
   padding:0;
+  min-height:100%;
   background:var(--bg);
   color:var(--text);
-  min-height:100%;
   overflow-x:hidden;
+  overflow-y:auto; /* ✅ full page scroll */
 }
 
 /* =========================
@@ -36,28 +44,30 @@ html, body{
    ========================= */
 #homeScreen,
 #builderScreen{
-  min-height:100dvh;
+  min-height:100vh;
   padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-  box-sizing:border-box;
 }
 
-/* BUILDER SCREEN: lock to viewport so panels can scroll */
+/* BUILDER SCREEN: normal flow (NOT fixed), so page can scroll */
 #builderScreen{
-  height:100dvh;
-  overflow:hidden;
   display:flex;
   flex-direction:column;
+  overflow:visible;
 }
 
 /* =========================
    HEADER
    ========================= */
 header{
-  flex:0 0 auto;
   padding:12px 16px;
   border-bottom:1px solid var(--border);
-  background:rgba(255,255,255,0.90);
+  background:rgba(255,255,255,0.92);
   backdrop-filter:blur(10px);
+
+  /* ✅ Sticky header while scrolling page (remove if you don't want) */
+  position:sticky;
+  top:0;
+  z-index:50;
 }
 
 header h1{ margin:0; font-size:16px; font-weight:750; letter-spacing:0.2px; }
@@ -65,16 +75,14 @@ header p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; }
 
 /* =========================
    APP LAYOUT
+   - No viewport lock. Height grows with content.
    ========================= */
 .app{
-  flex:1 1 auto;
-  min-height:0;
   padding:var(--appPad);
   display:grid;
   grid-template-columns: var(--leftW) minmax(0, 1fr);
   gap:var(--gap);
-  align-items:stretch;
-  overflow:hidden; /* IMPORTANT: panels scroll, not page */
+  align-items:start; /* content-driven height */
 }
 
 /* =========================
@@ -88,11 +96,9 @@ header p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; }
   box-shadow:var(--shadow);
   display:flex;
   flex-direction:column;
-  min-height:0;
 }
 
 .panel .hd{
-  flex:0 0 auto;
   padding:10px 12px;
   border-bottom:1px solid var(--border);
   display:flex;
@@ -104,14 +110,8 @@ header p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; }
 .panel .hd .title{ font-weight:750; }
 
 .panel .bd{
-  flex:1 1 auto;
-  min-height:0;
-  overflow:auto;            /* panel body scroll region */
   padding:12px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
-
-#leftPanel, #rightPanel{ min-height:0; }
 
 /* =========================
    HELPERS
@@ -169,14 +169,18 @@ button.danger{ border-color:rgba(220,38,38,0.30); background:rgba(220,38,38,0.06
 
 /* =========================
    LEFT LIST
+   - In Option B, page scroll is primary.
+   - Still allow left list to scroll if it gets huge.
    ========================= */
 .qlist{
   display:flex;
   flex-direction:column;
   gap:10px;
   padding-right:6px;
-  overflow:auto;     /* list itself can scroll */
-  min-height:0;
+
+  /* Optional: keep list usable without taking over the whole page */
+  max-height: calc(100vh - 220px);
+  overflow:auto;
 }
 
 .qlist::-webkit-scrollbar{ width:8px; }
@@ -244,7 +248,7 @@ button.danger{ border-color:rgba(220,38,38,0.30); background:rgba(220,38,38,0.06
 .qgroup .qcard:last-child{ border-bottom-left-radius:12px; border-bottom-right-radius:12px; }
 
 /* =========================
-   FORMS
+   FORMS / GRID
    ========================= */
 .grid2{
   display:grid;
@@ -290,6 +294,10 @@ input:focus, textarea:focus, select:focus{
   background:#fff;
 }
 
+/* Prompt sizing */
+#qPrompt{ min-height:180px; font-size:14px; line-height:1.5; }
+#qImages{ min-height:44px; font-size:12px; line-height:1.3; background:#f8fafc; color:#475569; }
+
 /* Tables */
 table{
   width:100%;
@@ -309,10 +317,6 @@ th{
   color:rgba(49,46,129,1);
   font-weight:800;
 }
-
-/* Prompt sizing */
-#qPrompt{ min-height:180px; font-size:14px; line-height:1.5; }
-#qImages{ min-height:44px; font-size:12px; line-height:1.3; background:#f8fafc; color:#475569; }
 
 /* =========================
    MODALS (Table + Graph)
@@ -337,7 +341,7 @@ th{
   overflow:hidden;
   box-shadow:0 30px 70px rgba(17,24,39,0.25);
   margin:0 auto;
-  max-height: calc(100dvh - 36px);
+  max-height: calc(100vh - 36px);
   display:flex;
   flex-direction:column;
 }
@@ -355,7 +359,6 @@ th{
 .tb-modal-bd{
   padding:14px;
   overflow:auto;
-  min-height:0;
 }
 
 /* Table builder host */
@@ -409,13 +412,10 @@ th{
 }
 
 /* =========================
-   GRAPH MODAL (RESTORE 2-COLUMN LAYOUT)
+   GRAPH MODAL
    ========================= */
-.graph-card{
-  width: min(1280px, 96vw);
-}
+.graph-card{ width: min(1280px, 96vw); }
 
-/* 2-column layout: left (graph + toolbar) / right (plots/lines/points) */
 .graph-bd{
   display:grid;
   grid-template-columns: minmax(560px, 1fr) 360px;
@@ -423,26 +423,19 @@ th{
   align-items:start;
 }
 
-/* Left column */
 .graph-left{
   display:flex;
   flex-direction:column;
   gap:12px;
   min-width:0;
-  min-height:0;
 }
-
-/* Right column */
 .graph-right{
   display:flex;
   flex-direction:column;
   gap:12px;
   min-width:0;
-  min-height:0;
-  align-self:start;
 }
 
-/* Toolbar: 3 zones (tool buttons | grid size | insert settings) */
 .graph-toolbar{
   display:grid;
   grid-template-columns: 220px minmax(280px, 1fr) 320px;
@@ -457,7 +450,6 @@ th{
   background:rgba(255,255,255,0.65);
 }
 
-/* TRUE 3×3 D-pad (with invisible center square) */
 .graph-arrows{
   display:grid;
   grid-template-columns: 44px 44px 44px;
@@ -468,12 +460,11 @@ th{
   width:100%;
 }
 
-#gUp    { grid-column:2; grid-row:1; justify-self:center; align-self:center; }
-#gLeft  { grid-column:1; grid-row:2; justify-self:center; align-self:center; }
-#gRight { grid-column:3; grid-row:2; justify-self:center; align-self:center; }
-#gDown  { grid-column:2; grid-row:3; justify-self:center; align-self:center; }
+#gUp{ grid-column:2; grid-row:1; }
+#gLeft{ grid-column:1; grid-row:2; }
+#gRight{ grid-column:3; grid-row:2; }
+#gDown{ grid-column:2; grid-row:3; }
 
-/* If you added .gpad-center in HTML */
 .gpad-center{
   grid-column:2;
   grid-row:2;
@@ -483,7 +474,6 @@ th{
   pointer-events:none;
 }
 
-/* –  a=7  + row */
 .graph-arrows-row{
   grid-column:1 / -1;
   grid-row:4;
@@ -511,19 +501,17 @@ th{
   border-radius:10px;
   padding:8px 10px;
   background:#fff;
-
-  white-space:nowrap;   /* stop wrapping */
-  min-width:72px;       /* make it wider */
+  white-space:nowrap;
+  min-width:72px;
 }
 
-
-/* Stage */
 .graph-stage{
   border:1px solid rgba(36,50,74,0.18);
   border-radius:14px;
   background:#fff;
   padding:10px;
   min-width:0;
+  overflow:auto;
 }
 
 .graph-svg{
@@ -535,8 +523,19 @@ th{
   border:1px solid var(--border);
 }
 
-/* Responsive: ONLY collapse to 1 column on small screens */
+/* =========================
+   RESPONSIVE
+   ========================= */
 @media (max-width: 760px){
+  .app{
+    grid-template-columns: 1fr;
+  }
+  .grid2{
+    grid-template-columns:1fr;
+  }
+  .qlist{
+    max-height:none; /* let it flow naturally on mobile */
+  }
   .graph-bd{
     grid-template-columns: 1fr;
   }
@@ -547,4 +546,3 @@ th{
     height:420px;
   }
 }
-
