@@ -1669,16 +1669,49 @@ function svgEl(name, attrs = {}) {
 // --- Helpers required by drawGraphSvg() ---
 
 function safeEvalExpr(expr, x) {
-  // Supports: numbers, x, + - * / ^, parentheses, decimals, spaces
-  // Converts ^ to JS **. Returns NaN on invalid input.
   const s = String(expr || "").trim();
   if (!s) return NaN;
 
-  // Very small sanitization to avoid arbitrary JS:
-  // allow digits, x/X, operators, parentheses, decimal point, spaces
-  if (!/^[0-9xX+\-*/^().\s]+$/.test(s)) return NaN;
+  // allow digits, x, operators, parentheses, decimal, commas, and letters for function names
+  if (!/^[0-9xX+\-*/^().,\sA-Za-z]+$/.test(s)) return NaN;
 
-  const js = s.replace(/\bX\b/g, "x").replace(/\^/g, "**");
+  // Convert ^ to **
+  let js = s.replace(/\^/g, "**");
+
+  // Normalize variable
+  js = js.replace(/\bX\b/g, "x");
+
+  // Constants
+  js = js.replace(/\bpi\b/gi, "Math.PI");
+  js = js.replace(/\be\b/g, "Math.E");
+
+  // Map common functions (radians in JS Math)
+  const fnMap = [
+    ["sin", "Math.sin"],
+    ["cos", "Math.cos"],
+    ["tan", "Math.tan"],
+    ["asin", "Math.asin"],
+    ["acos", "Math.acos"],
+    ["atan", "Math.atan"],
+    ["sqrt", "Math.sqrt"],
+    ["abs", "Math.abs"],
+    ["ln", "Math.log"],
+    ["log", "Math.log10"], // if you want base-10 log; change if you prefer ln
+    ["exp", "Math.exp"],
+    ["min", "Math.min"],
+    ["max", "Math.max"],
+  ];
+
+  for (const [k, v] of fnMap) {
+    js = js.replace(new RegExp(`\\b${k}\\b`, "gi"), v);
+  }
+
+  // Insert multiplication for 2(x+1), 2x, x( ... ), )( ...
+  js = js.replace(/(\d)\(/g, "$1*(");
+  js = js.replace(/(\d)(x)\b/gi, "$1*$2");
+  js = js.replace(/\)\(/g, ")*(");
+  js = js.replace(/\bx\(/gi, "x*(");
+  js = js.replace(/\)(x)\b/gi, ")*$1");
 
   try {
     // eslint-disable-next-line no-new-func
@@ -1725,6 +1758,28 @@ function plotToPath(expr, samples = 500) {
   return d.trim();
 }
 
+function labelOffsetForPos(pos) {
+  const p = String(pos || "above right").toLowerCase().trim();
+
+  // default nudges in SVG pixels
+  const d = 12;
+
+  // return {dx, dy, anchor}
+  // anchor = SVG text-anchor: start | middle | end
+  switch (p) {
+    case "above":       return { dx: 0,   dy: -d, anchor: "middle" };
+    case "below":       return { dx: 0,   dy: d,  anchor: "middle" };
+    case "left":        return { dx: -d,  dy: 4,  anchor: "end"    };
+    case "right":       return { dx: d,   dy: 4,  anchor: "start"  };
+
+    case "above right": return { dx: d,   dy: -d, anchor: "start"  };
+    case "above left":  return { dx: -d,  dy: -d, anchor: "end"    };
+    case "below right": return { dx: d,   dy: d,  anchor: "start"  };
+    case "below left":  return { dx: -d,  dy: d,  anchor: "end"    };
+
+    default:            return { dx: d,   dy: -d, anchor: "start"  };
+  }
+}
 
 // --- REPLACE YOUR EXISTING drawGraphSvg() WITH THIS ---
 function drawGraphSvg() {
@@ -1843,13 +1898,21 @@ function drawGraphSvg() {
     }
 
     if (p.label) {
+      const { dx, dy, anchor } = labelOffsetForPos(p.pos);
+
       const t = svgEl("text", {
-        x: px + 10,
-        y: py - 10,
+        x: px + dx,
+        y: py + dy,
         fill: "rgba(0,0,0,0.85)",
         "font-size": 12,
-        "font-weight": 700
+        "font-weight": 700,
+        "text-anchor": anchor
       });
+
+      // Optional: better vertical alignment
+      // "hanging" helps for "below", but can look odd; baseline is fine.
+      // t.setAttribute("dominant-baseline", "middle");
+
       t.textContent = p.label;
       g.appendChild(t);
     }
@@ -2151,25 +2214,37 @@ function renderPlotsUI() {
 }
 
 
-function tikzifyExpression(expr) {
-  let s = (expr || "").trim();
-  if (!s) return "\\x"; // harmless fallback
+function pgfplotsifyExpression(expr) {
+  let s = String(expr || "").trim();
+  if (!s) return "x";
 
-  // Insert multiplication for things like 2(x+1)
+  // Normalize spaces
+  s = s.replace(/\s+/g, "");
+
+  // Insert * for implicit multiplication cases:
+  // 2(x+1) -> 2*(x+1)
   s = s.replace(/(\d)\(/g, "$1*(");
 
-  // Expand (x+1)^2 into (x+1)*(x+1) (TikZ-friendly)
-  s = s.replace(/\(([^)]+)\)\^2/g, "($1)*($1)");
+  // 2x -> 2*x
+  s = s.replace(/(\d)(x)\b/gi, "$1*$2");
 
-  // Replace x with \x for pgf math variable
-  s = s.replace(/\bx\^2\b/g, "(\\x)*(\\x)");
-  s = s.replace(/\bx\b/g, "\\x");
+  // )( -> )*(
+  s = s.replace(/\)\(/g, ")*(");
+
+  // x( -> x*(
+  s = s.replace(/\bx\(/gi, "x*(");
+
+  // )x -> )*x
+  s = s.replace(/\)(x)\b/gi, ")*$1");
+
+  // Allow pi constant: "pi" is supported by pgfmath
+  // (leave "pi" as-is)
 
   return s;
 }
 
-function buildGraphTikzLatex() {
-  // pull current form values (guard if fields missing)
+function buildGraphPgfplotsLatex() {
+  // pull current form values
   if (el("gScale"))   graphBuilder.scale   = Number(el("gScale").value);
   if (el("gPad"))     graphBuilder.pad     = Number(el("gPad").value);
   if (el("gDomMin"))  graphBuilder.domMin  = Number(el("gDomMin").value);
@@ -2183,52 +2258,103 @@ function buildGraphTikzLatex() {
   const showGrid = graphBuilder.showGrid !== false;
   const showAxes = graphBuilder.showAxes !== false;
 
-  const lines = [
-    `\\begin{tikzpicture}[scale=${scale}]`,
-    `\\def\\a{${a}}`,
-    `\\def\\pad{${pad}}`,
-    ``
-  ];
+  // Axis bounds from your "a" and pad
+  const xmin = -a - pad;
+  const xmax =  a + pad;
+  const ymin = -a - pad;
+  const ymax =  a + pad;
 
-  // grid (optional)
-  if (showGrid) {
-    lines.push(`\\draw[step=1] (-\\a,-\\a) grid (\\a,\\a);`, ``);
-  }
+  // If you want the visible plot domain independent from axis bounds, keep your domMin/domMax:
+  const domMin = graphBuilder.domMin;
+  const domMax = graphBuilder.domMax;
+  const samples = Math.max(20, Number(graphBuilder.samples) || 200);
 
-  // axes (optional)
+  const lines = [];
+
+  lines.push(`\\begin{tikzpicture}[scale=${scale}]`);
+  lines.push(`\\begin{axis}[`);
+
+  // Core axis settings
   if (showAxes) {
-    lines.push(
-      `\\draw[<->, thick] (-\\a-\\pad,0)--(\\a+\\pad,0);`,
-      `\\draw[<->, thick] (0,-\\a-\\pad)--(0,\\a+\\pad);`,
-      ``
-    );
+    lines.push(`  axis lines=center,`);
+  } else {
+    // no axes: hide everything axis-like
+    lines.push(`  axis lines=none,`);
+    lines.push(`  ticks=none,`);
   }
 
-  // plots
+  // Bounds
+  lines.push(`  xmin=${xmin}, xmax=${xmax},`);
+  lines.push(`  ymin=${ymin}, ymax=${ymax},`);
+
+  // Grid
+  if (showGrid) {
+    lines.push(`  grid=both,`);
+    lines.push(`  minor tick num=1,`);
+  } else {
+    lines.push(`  grid=none,`);
+  }
+
+  // ✅ This is the big trig improvement: use radians
+  // Now sin(x), cos(x), tan(x) treat x as radians.
+  lines.push(`  trig format plots=rad,`);
+
+  // Keep a 1:1 scale visually
+  lines.push(`  axis equal image,`);
+
+  // Keep labels off by default (you can add if you want)
+  lines.push(`  xlabel={$x$}, ylabel={$y$},`);
+
+  // Nice clipping
+  lines.push(`  clip=true,`);
+  lines.push(`]`);
+
+  // Plots (multiple functions)
   (graphBuilder.plots || []).forEach(pl => {
+    const exprRaw = (pl && pl.expr) ? String(pl.expr) : "";
+    const expr = pgfplotsifyExpression(exprRaw);
+    if (!expr.trim()) return;
+
+    // thickness mapping
     const style = (pl.style || "thin").trim();
-    const expr = tikzifyExpression(pl.expr);
+    const plotStyle =
+      (style === "very thick") ? "very thick" :
+      (style === "thick") ? "thick" :
+      "thin";
+
+    // In pgfplots, expressions go in { ... }
     lines.push(
-      `\\draw[${style}, domain=${graphBuilder.domMin}:${graphBuilder.domMax}, samples=${graphBuilder.samples}, smooth]`,
-      `  plot (\\x,{${expr}});`,
-      ``
+      `\\addplot[${plotStyle}, black, domain=${domMin}:${domMax}, samples=${samples}, smooth]`,
+      `  {${expr}};`
     );
   });
 
-  // lines
+  // Drawn straight lines
   (graphBuilder.lines || []).forEach(L => {
-    lines.push(`\\draw[thick, black] (${L.x1},${L.y1}) -- (${L.x2},${L.y2});`);
+    lines.push(`\\addplot[thick, black] coordinates { (${L.x1},${L.y1}) (${L.x2},${L.y2}) };`);
   });
 
-  // points
+  // Points + labels
   (graphBuilder.points || []).forEach(p => {
     const r = Number.isFinite(Number(p.r)) ? Number(p.r) : 3;
 
-    if (r > 0.001) lines.push(`\\filldraw[black] (${p.x},${p.y}) circle (${r}pt);`);
-    if (p.label) lines.push(`\\node[${p.pos || "above right"}] at (${p.x},${p.y}) {$${p.label}$};`);
+    // Dot: easiest is an axis coordinate node
+    if (r > 0.001) {
+      // pgfplots “mark size” is in pt-ish units; tune as you like
+      const ms = Math.max(1, r);
+      lines.push(`\\addplot[only marks, mark=*, mark size=${ms}, black] coordinates { (${p.x},${p.y}) };`);
+    }
+
+    // Label
+    if (p.label) {
+      const pos = (p.pos || "above right").replace(/\s+/g, " ");
+      lines.push(`\\node[${pos}] at (axis cs:${p.x},${p.y}) {$${p.label}$};`);
+    }
   });
 
+  lines.push(`\\end{axis}`);
   lines.push(`\\end{tikzpicture}`);
+
   return lines.join("\n");
 }
 
@@ -2241,7 +2367,7 @@ function insertGraphLatex() {
     return;
   }
 
-  const latex = buildGraphTikzLatex();
+  const latex = buildGraphPgfplotsLatex();
   const target = el("graphInsertTarget")?.value || "prompt";
 
   if (target === "prompt") {
@@ -2837,7 +2963,7 @@ return questions;
 \\graphicspath{ {./images/} }
 \\usepackage{tcolorbox}
 \\pointsinmargin
-
+\\pgfplotsset{compat=1.18}
 \\def\\numbox{
 \\begin{center}
 \\begin{tikzpicture}
@@ -2977,7 +3103,6 @@ ${instructionItems}
 \\end{center}
 
 \\newpage
-\\begin{center} \\textbf{ Multiple Choice} \\end{center}
 
 \\begin{questions}
 
