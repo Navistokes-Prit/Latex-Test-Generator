@@ -376,7 +376,7 @@
         </div>
 
 
-                    <div class="graph-ctrl">
+          <div class="graph-ctrl">
             <div class="small muted" style="margin-bottom:6px;">Grid size (a)</div>
 
             <div class="graph-arrows">
@@ -436,6 +436,18 @@
             <div class="field" style="margin:0;">
               <label>Samples</label>
               <input type="number" id="gSamples" value="200" step="10" min="20">
+            </div>
+
+                      <!-- ADD THIS RIGHT HERE -->
+            <div class="grid2" style="margin-top:10px;">
+              <div class="field" style="margin:0;">
+                <label>X tick distance</label>
+                <input type="number" id="gTickX" value="2" step="1" min="1">
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Y tick distance</label>
+                <input type="number" id="gTickY" value="2" step="1" min="1">
+              </div>
             </div>
           </div>
         </div>
@@ -2243,30 +2255,41 @@ function pgfplotsifyExpression(expr) {
   return s;
 }
 
+function numVal(id, fallback) {
+  const node = document.getElementById(id);
+  if (!node) return fallback;
+  const v = Number(node.value);
+  return Number.isFinite(v) ? v : fallback;
+}
+
 function buildGraphPgfplotsLatex() {
-  // pull current form values
+  // Pull current form values (keep graphBuilder in sync with UI)
   if (el("gScale"))   graphBuilder.scale   = Number(el("gScale").value);
   if (el("gPad"))     graphBuilder.pad     = Number(el("gPad").value);
   if (el("gDomMin"))  graphBuilder.domMin  = Number(el("gDomMin").value);
   if (el("gDomMax"))  graphBuilder.domMax  = Number(el("gDomMax").value);
   if (el("gSamples")) graphBuilder.samples = Number(el("gSamples").value);
 
-  const scale = graphBuilder.scale;
-  const a = graphBuilder.a;
-  const pad = graphBuilder.pad;
+  // ✅ Tick spacing (MUST be defined before we use it)
+  const tickX = Math.max(1, Math.round(numVal("gTickX", 2)));
+  const tickY = Math.max(1, Math.round(numVal("gTickY", 2)));
+
+  const scale = Number.isFinite(Number(graphBuilder.scale)) ? Number(graphBuilder.scale) : 0.45;
+  const a = Number.isFinite(Number(graphBuilder.a)) ? Number(graphBuilder.a) : 7;
+  const pad = Number.isFinite(Number(graphBuilder.pad)) ? Number(graphBuilder.pad) : 0.5;
 
   const showGrid = graphBuilder.showGrid !== false;
   const showAxes = graphBuilder.showAxes !== false;
 
-  // Axis bounds from your "a" and pad
+  // Axis bounds from "a" and pad
   const xmin = -a - pad;
   const xmax =  a + pad;
   const ymin = -a - pad;
   const ymax =  a + pad;
 
-  // If you want the visible plot domain independent from axis bounds, keep your domMin/domMax:
-  const domMin = graphBuilder.domMin;
-  const domMax = graphBuilder.domMax;
+  // Plot domain + samples
+  const domMin = Number.isFinite(Number(graphBuilder.domMin)) ? Number(graphBuilder.domMin) : -2.6;
+  const domMax = Number.isFinite(Number(graphBuilder.domMax)) ? Number(graphBuilder.domMax) :  2.6;
   const samples = Math.max(20, Number(graphBuilder.samples) || 200);
 
   const lines = [];
@@ -2274,11 +2297,10 @@ function buildGraphPgfplotsLatex() {
   lines.push(`\\begin{tikzpicture}[scale=${scale}]`);
   lines.push(`\\begin{axis}[`);
 
-  // Core axis settings
+  // Axes visibility
   if (showAxes) {
     lines.push(`  axis lines=center,`);
   } else {
-    // no axes: hide everything axis-like
     lines.push(`  axis lines=none,`);
     lines.push(`  ticks=none,`);
   }
@@ -2287,22 +2309,37 @@ function buildGraphPgfplotsLatex() {
   lines.push(`  xmin=${xmin}, xmax=${xmax},`);
   lines.push(`  ymin=${ymin}, ymax=${ymax},`);
 
-  // Grid
-  if (showGrid) {
+    // Grid + tick spacing
+    if (showGrid) {
     lines.push(`  grid=both,`);
-    lines.push(`  minor tick num=1,`);
+
+    // Major tick spacing (controls subdivision count)
+    lines.push(`  xtick distance=${tickX},`);
+    lines.push(`  ytick distance=${tickY},`);
+
+    // Minor ticks subdivide majors (for 1-unit grid when tickX/Y are integers)
+    lines.push(`  minor x tick num=${Math.max(0, Math.round(tickX) - 1)},`);
+    lines.push(`  minor y tick num=${Math.max(0, Math.round(tickY) - 1)},`);
+
+    // ✅ SAME STYLE FOR ALL GRIDLINES
+    lines.push(`  major grid style={line width=0.3pt, gray!25},`);
+    lines.push(`  minor grid style={line width=0.3pt, gray!25},`);
+
+    // Hide tick marks + labels
+    lines.push(`  tick style={draw=none},`);
+    lines.push(`  xticklabels=\\empty,`);
+    lines.push(`  yticklabels=\\empty,`);
   } else {
     lines.push(`  grid=none,`);
   }
 
-  // ✅ This is the big trig improvement: use radians
-  // Now sin(x), cos(x), tan(x) treat x as radians.
+  // ✅ Trig in radians (sin(x), cos(x), tan(x) treat x as radians)
   lines.push(`  trig format plots=rad,`);
 
-  // Keep a 1:1 scale visually
+  // Keep 1:1 scaling
   lines.push(`  axis equal image,`);
 
-  // Keep labels off by default (you can add if you want)
+  // Keep labels off (you can remove these if you want labels visible)
   lines.push(`  xlabel={$x$}, ylabel={$y$},`);
 
   // Nice clipping
@@ -2315,14 +2352,12 @@ function buildGraphPgfplotsLatex() {
     const expr = pgfplotsifyExpression(exprRaw);
     if (!expr.trim()) return;
 
-    // thickness mapping
     const style = (pl.style || "thin").trim();
     const plotStyle =
       (style === "very thick") ? "very thick" :
       (style === "thick") ? "thick" :
       "thin";
 
-    // In pgfplots, expressions go in { ... }
     lines.push(
       `\\addplot[${plotStyle}, black, domain=${domMin}:${domMax}, samples=${samples}, smooth]`,
       `  {${expr}};`
@@ -2338,14 +2373,12 @@ function buildGraphPgfplotsLatex() {
   (graphBuilder.points || []).forEach(p => {
     const r = Number.isFinite(Number(p.r)) ? Number(p.r) : 3;
 
-    // Dot: easiest is an axis coordinate node
+    // Dot: if r=0 => label-only
     if (r > 0.001) {
-      // pgfplots “mark size” is in pt-ish units; tune as you like
       const ms = Math.max(1, r);
       lines.push(`\\addplot[only marks, mark=*, mark size=${ms}, black] coordinates { (${p.x},${p.y}) };`);
     }
 
-    // Label
     if (p.label) {
       const pos = (p.pos || "above right").replace(/\s+/g, " ");
       lines.push(`\\node[${pos}] at (axis cs:${p.x},${p.y}) {$${p.label}$};`);
